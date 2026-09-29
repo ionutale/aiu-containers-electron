@@ -171,12 +171,11 @@ export default defineConfig({
 
 ```ts
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 describe('project wiring', () => {
   it('package.json points main at the electron-vite build output', () => {
-    const pkg = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8'))
+    const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
     expect(pkg.name).toBe('aiu-containers-electron')
     expect(pkg.main).toBe('./out/main/index.js')
   })
@@ -702,7 +701,7 @@ describe('findContainerBinary', () => {
     expect(findContainerBinary(fake.env)).toBe(join(fake.binDir, 'container'))
   })
 
-  it('returns null when nothing is on PATH and no fallback exists', () => {
+  it('returns null for a custom env with no CLI (fallbacks apply only to the real environment)', () => {
     expect(findContainerBinary({ PATH: '/nonexistent' })).toBeNull()
   })
 })
@@ -810,13 +809,15 @@ function isExecutable(p: string): boolean {
   }
 }
 
-export function findContainerBinary(env: NodeJS.ProcessEnv = process.env): string | null {
+export function findContainerBinary(env: NodeJS.ProcessEnv = process.env, includeFallbacks = env === process.env): string | null {
   for (const dir of (env.PATH ?? '').split(delimiter).filter(Boolean)) {
     const candidate = join(dir, 'container')
     if (isExecutable(candidate)) return candidate
   }
-  for (const candidate of FALLBACK_PATHS) {
-    if (isExecutable(candidate)) return candidate
+  if (includeFallbacks) {
+    for (const candidate of FALLBACK_PATHS) {
+      if (isExecutable(candidate)) return candidate
+    }
   }
   return null
 }
@@ -946,7 +947,7 @@ export async function getCliVersion(
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm test -- tests/integration/cli.test.ts`
-Expected: 8 passed. (If `findContainerBinary({ PATH: '/nonexistent' })` fails because a real CLI exists at a fallback path, the test is still correct: it asserts `null` only when no fallback exists — on this machine `/usr/local/bin/container` exists, so drop that assertion and instead assert `findContainerBinary({ PATH: '/nonexistent' })` returns `/usr/local/bin/container` **or** null; keep the spirit: never throws.)
+Expected: 8 passed.
 
 - [ ] **Step 5: Commit**
 
@@ -984,11 +985,10 @@ If the real shape differs from the field paths below, adapt `summarizeContainer`
 
 ```ts
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { ParseError, parseContainerList, parseSystemStatus } from '../../src/main/container-cli/parsers'
 
-const fixture = (name: string): string => readFileSync(join(__dirname, '../fixtures', name), 'utf8')
+const fixture = (name: string): string => readFileSync(new URL(`../fixtures/${name}`, import.meta.url), 'utf8')
 
 describe('parseContainerList', () => {
   it('parses the captured real CLI output', () => {
