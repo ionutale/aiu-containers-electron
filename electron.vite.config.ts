@@ -3,11 +3,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 export default defineConfig({
   main: {},
-  preload: {
-    build: {
-      externalizeDeps: { exclude: ['@electron-toolkit/preload'] }
-    }
-  },
+  preload: {},
   renderer: {
     plugins: [svelte()]
   }

@@ -1,5 +1,4 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { electronAPI } from '@electron-toolkit/preload'
 import { CHANNELS, type ContainersApi } from '../shared/api'
 import type { BuildDoneEvent, BuildOutputEvent } from '../shared/types'
 
@@ -25,7 +24,6 @@ const api: ContainersApi = {
 }
 
 if (process.contextIsolated) {
-  contextBridge.exposeInMainWorld('electron', electronAPI) // removed in Task 9 with the template demo
   contextBridge.exposeInMainWorld('containers', api)
 } else {
   ;(window as unknown as { containers: ContainersApi }).containers = api
