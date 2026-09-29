@@ -36,17 +36,12 @@ function createWindow(): BrowserWindow {
   return mainWindow
 }
 
-app.whenReady().then(async () => {
+app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.ionutale.aiu-containers-electron')
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
   const mainWindow = createWindow()
   const buildManager = new BuildManager()
-
-  const cli = await getCliVersion()
-  if (cli?.version && !isVersionAtLeast(cli.version, '0.10.0')) {
-    console.warn(`container CLI ${cli.version} is older than 0.10.0; behavior may differ.`)
-  }
 
   registerIpc(ipcMain, {
     listContainers: (runningOnly) => listContainers(runningOnly),
@@ -74,6 +69,12 @@ app.whenReady().then(async () => {
         defaultPath
       })
       return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0]
+    }
+  })
+
+  void getCliVersion().then((cli) => {
+    if (cli?.version && !isVersionAtLeast(cli.version, '0.10.0')) {
+      console.warn(`container CLI ${cli.version} is older than 0.10.0; behavior may differ.`)
     }
   })
 
