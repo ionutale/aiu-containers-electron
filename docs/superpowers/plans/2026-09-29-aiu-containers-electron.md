@@ -1220,7 +1220,7 @@ describe('systemStatus / startSystem', () => {
     const result = await systemStatus({ env: fake.env })
     if (result.ok) {
       expect(result.status.status).toBe('running')
-      expect(result.status.containersRunning).toBe(1)
+      expect(result.status.serverVersion).toContain('0.10.0')
     } else {
       expect.unreachable('status should parse')
     }
