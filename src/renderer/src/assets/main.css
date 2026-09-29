@@ -14,3 +14,9 @@ table { width: 100%; border-collapse: collapse; margin-top: 12px; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
 .muted { opacity: 0.6; }
 .error { color: #c62828; }
+.banner { border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: 8px; padding: 10px 12px; margin: 12px 0; }
+.banner pre { overflow: auto; font-size: 12px; }
+.badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, currentColor 10%, transparent); }
+.badge.bad { color: #ef6c00; }
+.controls { display: flex; align-items: center; gap: 12px; }
+.controls label { display: flex; align-items: center; gap: 6px; }
