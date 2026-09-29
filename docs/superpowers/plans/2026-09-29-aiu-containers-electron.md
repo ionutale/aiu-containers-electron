@@ -2379,7 +2379,7 @@ Expected: FAIL — no toggle/banners/auto-refresh yet.
 
   async function refreshServiceState(): Promise<void> {
     const result = await getApi().systemStatus()
-    if (result.ok) serviceState = result.status.status === 'running' ? 'running' : 'not-running'
+    if (result.ok === true) serviceState = result.status.status === 'running' ? 'running' : 'not-running'
     else serviceState = result.error.code === 'SERVICE_NOT_RUNNING' ? 'not-running' : 'unknown'
   }
 
