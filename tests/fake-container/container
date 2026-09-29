@@ -1,0 +1,137 @@
+#!/usr/bin/env node
+// Stateful fake of Apple's `container` CLI (v0.10.0 shapes) for tests.
+// Modes via FAKE_CONTAINER_MODE: default | service-down | bad-json |
+// slow-build | blocking-build | failing-build
+import { readFileSync, writeFileSync } from 'node:fs'
+
+const MODE = process.env.FAKE_CONTAINER_MODE ?? 'default'
+const STATE_PATH = process.env.FAKE_CONTAINER_STATE
+const args = process.argv.slice(2)
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+const SERVICE_DOWN_STDERR =
+  'Error: internalError: "failed to list containers" (cause: "interrupted: "XPC connection error: Connection invalid"") ' +
+  "Ensure container system service has been started with 'container system start'.\n"
+
+const seededContainers = [
+  {
+    id: 'web-1',
+    configuration: {
+      image: { reference: 'docker.io/library/nginx:latest', descriptor: { digest: 'sha256:nginx123' } },
+      platform: { os: 'linux', architecture: 'arm64' },
+      resources: { cpus: 2, memoryInBytes: 1073741824 },
+      creationDate: '2026-08-31T12:00:00Z',
+      networks: [{ network: 'default', options: {} }],
+      labels: {}
+    },
+    status: {
+      state: 'running',
+      networks: [
+        { network: 'default', hostname: 'web-1', ipv4Address: '192.168.64.2/24', ipv4Gateway: '192.168.64.1' }
+      ]
+    }
+  },
+  {
+    id: 'db-1',
+    configuration: {
+      image: { reference: 'docker.io/library/postgres:16', descriptor: { digest: 'sha256:pg123' } },
+      platform: { os: 'linux', architecture: 'arm64' },
+      resources: { cpus: 4, memoryInBytes: 2147483648 },
+      creationDate: '2026-08-31T11:00:00Z',
+      networks: [{ network: 'default', options: {} }],
+      labels: {}
+    },
+    status: { state: 'stopped', networks: [] }
+  }
+]
+
+function state() {
+  if (!STATE_PATH) return { extra: [] }
+  try {
+    return JSON.parse(readFileSync(STATE_PATH, 'utf8'))
+  } catch {
+    return { extra: [] }
+  }
+}
+
+function save(s) {
+  if (STATE_PATH) writeFileSync(STATE_PATH, JSON.stringify(s))
+}
+
+function containers() {
+  return seededContainers.filter((c) => !state().deleted?.includes(c.id)).concat(state().extra ?? [])
+}
+
+function serviceDown() {
+  process.stderr.write(SERVICE_DOWN_STDERR)
+  process.exit(1)
+}
+
+async function main() {
+  const sub = args[0] ?? ''
+  const rest = args.slice(1)
+
+  if (sub === '--version') {
+    console.log('container CLI version 0.10.0 (build: release, commit: fake)')
+    return
+  }
+  if (sub === 'list') {
+    if (MODE === 'service-down') serviceDown()
+    if (MODE === 'bad-json') {
+      process.stdout.write('{"oops')
+      return
+    }
+    const all = rest.includes('--all')
+    process.stdout.write(JSON.stringify(all ? containers() : containers().filter((c) => c.status.state === 'running')))
+    return
+  }
+  if (sub === 'system' && rest[0] === 'status') {
+    if (MODE === 'service-down') serviceDown()
+    console.log(
+      JSON.stringify({
+        status: 'running',
+        client: { version: '0.10.0', build: 'release' },
+        server: { version: '0.10.0' },
+        host: { architecture: 'arm64', operatingSystem: 'macos', cpus: 10 },
+        resources: {
+          containersTotal: containers().length,
+          containersRunning: containers().filter((c) => c.status.state === 'running').length
+        }
+      })
+    )
+    return
+  }
+  if (sub === 'system' && rest[0] === 'start') {
+    console.log('Container services started')
+    return
+  }
+  if (sub === 'build') {
+    console.log('fake build args: ' + JSON.stringify(rest))
+    if (MODE === 'blocking-build') {
+      console.log('#1 [internal] load build definition')
+      await sleep(600_000)
+      return
+    }
+    const steps = [
+      '#1 [internal] load build definition from Dockerfile',
+      '#2 [1/2] FROM alpine:3.20',
+      '#3 [2/2] RUN echo hello',
+      '#4 exporting layers',
+      'DONE 0.2s'
+    ]
+    for (const s of steps) {
+      console.log(s)
+      await sleep(MODE === 'slow-build' ? 120 : 5)
+    }
+    if (MODE === 'failing-build') {
+      console.error('ERROR: process "/bin/sh -c exit 1" did not complete successfully')
+      process.exit(1)
+    }
+    console.log('fake: done')
+    return
+  }
+  console.error('fake container: unhandled command: ' + args.join(' '))
+  process.exit(1)
+}
+
+main()
