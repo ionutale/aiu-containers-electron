@@ -44,6 +44,32 @@ describe('Build screen', () => {
     await waitFor(() => expect(screen.getByText(/no dockerfile or containerfile/i)).toBeInTheDocument())
   })
 
+  it('clears the missing-Dockerfile hint once a file is provided', async () => {
+    const api = stubApi({
+      contextInspect: vi.fn().mockResolvedValue({ dockerfile: null }),
+      pickFile: vi.fn().mockResolvedValue('/ctx/Dockerfile.dev')
+    } as Partial<ContainersApi>)
+    ;(window as unknown as { containers: ContainersApi }).containers = api
+    render(Build)
+    await fireEvent.click(screen.getByRole('button', { name: /choose/i }))
+    await waitFor(() => expect(screen.getByText(/no dockerfile or containerfile/i)).toBeInTheDocument())
+
+    await fireEvent.click(screen.getByRole('button', { name: /browse/i }))
+    await waitFor(() => expect(screen.getByDisplayValue('/ctx/Dockerfile.dev')).toBeInTheDocument())
+    expect(screen.queryByText(/no dockerfile or containerfile/i)).not.toBeInTheDocument()
+  })
+
+  it('clears the missing-Dockerfile hint when a path is typed in', async () => {
+    const api = stubApi({ contextInspect: vi.fn().mockResolvedValue({ dockerfile: null }) } as Partial<ContainersApi>)
+    ;(window as unknown as { containers: ContainersApi }).containers = api
+    render(Build)
+    await fireEvent.click(screen.getByRole('button', { name: /choose/i }))
+    await waitFor(() => expect(screen.getByText(/no dockerfile or containerfile/i)).toBeInTheDocument())
+
+    await fireEvent.input(screen.getByLabelText('Dockerfile'), { target: { value: 'Dockerfile.dev' } })
+    await waitFor(() => expect(screen.queryByText(/no dockerfile or containerfile/i)).not.toBeInTheDocument())
+  })
+
   it('starts a build with the form values', async () => {
     const api = stubApi()
     ;(window as unknown as { containers: ContainersApi }).containers = api

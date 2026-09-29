@@ -27,7 +27,10 @@
 
   async function chooseDockerfile(): Promise<void> {
     const file = await getApi().pickFile(contextDir || undefined)
-    if (file) dockerfilePath = file
+    if (file) {
+      dockerfilePath = file
+      dockerfileMissing = false
+    }
   }
 
   async function start(): Promise<void> {
@@ -70,7 +73,7 @@
       <input id="dockerfile" bind:value={dockerfilePath} placeholder="Dockerfile" />
       <button type="button" onclick={chooseDockerfile}>Browse…</button>
     </div>
-    {#if dockerfileMissing}
+    {#if dockerfileMissing && dockerfilePath === ''}
       <p class="muted">No Dockerfile or Containerfile found in this folder — choose one, or the build will fail.</p>
     {/if}
     <div class="row">
