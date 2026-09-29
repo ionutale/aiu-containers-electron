@@ -2389,12 +2389,12 @@ Expected: FAIL — no toggle/banners/auto-refresh yet.
     loading = true
     try {
       const result = await getApi().list(runningOnly)
-      if (result.ok) {
-        containers = result.containers
-        error = null
-      } else {
+      if (result.ok === false) {
         error = result.error
         containers = []
+      } else {
+        containers = result.containers
+        error = null
       }
     } finally {
       loading = false
@@ -2682,7 +2682,7 @@ describe('Build screen', () => {
     starting = true
     try {
       const result = await getApi().buildStart(req)
-      if (!result.ok) error = result.error
+      if (result.ok === false) error = result.error
       // streaming/footer wiring arrives in Task 12
     } finally {
       starting = false
@@ -2932,7 +2932,7 @@ Replace the script's build-related state and `start()` (keep the form markup fro
     starting = true
     try {
       const started = await getApi().buildStart(req)
-      if (!started.ok) {
+      if (started.ok === false) {
         error = started.error
         return
       }
