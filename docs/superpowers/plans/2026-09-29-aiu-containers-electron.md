@@ -2701,7 +2701,7 @@ describe('Build screen', () => {
     <div class="row">
       <label for="dockerfile">Dockerfile</label>
       <input id="dockerfile" bind:value={dockerfilePath} placeholder="Dockerfile" />
-      <button type="button" onclick={chooseDockerfile}>Choose…</button>
+      <button type="button" onclick={chooseDockerfile}>Browse…</button>
     </div>
     {#if dockerfileMissing}
       <p class="muted">No Dockerfile or Containerfile found in this folder — choose one, or the build will fail.</p>
