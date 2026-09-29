@@ -1,0 +1,9 @@
+{
+  "apiServerAppName": "container-apiserver",
+  "apiServerCommit": "6bdb647b69671c037e2188558ed2e5ba49af2e1a",
+  "appRoot": "<redacted>",
+  "apiServerBuild": "release",
+  "status": "running",
+  "apiServerVersion": "container-apiserver version 0.10.0 (build: release, commit: 6bdb647)",
+  "installRoot": "<redacted>"
+}

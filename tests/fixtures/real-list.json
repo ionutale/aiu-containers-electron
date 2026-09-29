@@ -1,0 +1,108 @@
+[
+  {
+    "status": "stopped",
+    "configuration": {
+      "ssh": false,
+      "initProcess": {
+        "supplementalGroups": [],
+        "terminal": false,
+        "workingDirectory": "/",
+        "user": {
+          "id": {
+            "uid": 0,
+            "gid": 0
+          }
+        },
+        "arguments": ["postgres"],
+        "environment": [
+          "<redacted>",
+          "<redacted>",
+          "<redacted>",
+          "<redacted>",
+          "<redacted>",
+          "<redacted>",
+          "<redacted>",
+          "<redacted>",
+          "<redacted>"
+        ],
+        "rlimits": [],
+        "executable": "docker-entrypoint.sh"
+      },
+      "labels": {},
+      "rosetta": false,
+      "publishedPorts": [
+        {
+          "proto": "tcp",
+          "hostPort": 5432,
+          "count": 1,
+          "containerPort": 5432,
+          "hostAddress": "127.0.0.1"
+        }
+      ],
+      "resources": {
+        "cpus": 4,
+        "memoryInBytes": 1073741824
+      },
+      "virtualization": false,
+      "id": "notes-postgres",
+      "readOnly": false,
+      "runtimeHandler": "container-runtime-linux",
+      "platform": {
+        "os": "linux",
+        "architecture": "arm64"
+      },
+      "sysctls": {},
+      "dns": {
+        "nameservers": [],
+        "options": [],
+        "searchDomains": []
+      },
+      "image": {
+        "reference": "docker.io/library/postgres:15",
+        "descriptor": {
+          "digest": "sha256:f30e3de0ac9cc938dac627ef2231099867c694b5f949fadb924c8c977428c399",
+          "mediaType": "application/vnd.oci.image.index.v1+json",
+          "size": 10237
+        }
+      },
+      "networks": [
+        {
+          "network": "default",
+          "options": {
+            "hostname": "notes-postgres"
+          }
+        }
+      ],
+      "mounts": [
+        {
+          "type": {
+            "volume": {
+              "name": "notes-postgres-data",
+              "format": "ext4",
+              "cache": {
+                "on": {}
+              },
+              "sync": {
+                "fsync": {}
+              }
+            }
+          },
+          "destination": "/var/lib/postgresql/data",
+          "options": [],
+          "source": "/Users/ionutale/Library/Application Support/com.apple.container/volumes/notes-postgres-data/volume.img"
+        },
+        {
+          "type": {
+            "virtiofs": {}
+          },
+          "destination": "/docker-entrypoint-initdb.d",
+          "options": [],
+          "source": "/Users/ionutale/developer/notes-web-app/docker/postgres-init/"
+        }
+      ],
+      "publishedSockets": [],
+      "useInit": false
+    },
+    "networks": []
+  }
+]
