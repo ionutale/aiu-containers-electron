@@ -89,7 +89,7 @@
           },
           "destination": "/var/lib/postgresql/data",
           "options": [],
-          "source": "/Users/ionutale/Library/Application Support/com.apple.container/volumes/notes-postgres-data/volume.img"
+          "source": "/redacted/notes-postgres-data/volume.img"
         },
         {
           "type": {
@@ -97,7 +97,7 @@
           },
           "destination": "/docker-entrypoint-initdb.d",
           "options": [],
-          "source": "/Users/ionutale/developer/notes-web-app/docker/postgres-init/"
+          "source": "/redacted/postgres-init/"
         }
       ],
       "publishedSockets": [],

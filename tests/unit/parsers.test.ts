@@ -18,6 +18,8 @@ describe('parseContainerList', () => {
       expect(c.id.length).toBeGreaterThan(0)
       expect(c.platform).toMatch(/^linux\//)
     }
+    expect(list[0].state).toBe('stopped')
+    expect(list[0].networks).toEqual(['default'])
   })
 
   it('summarizes the fake CLI shape precisely', () => {
