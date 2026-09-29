@@ -26,3 +26,9 @@ form textarea { min-height: 70px; }
 .disclosure { background: transparent; border: 0; color: inherit; padding: 6px 0; }
 .check { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
 button[type='submit'] { margin-top: 12px; padding: 7px 16px; }
+.build-log { margin-top: 16px; border: 1px solid color-mix(in srgb, currentColor 15%, transparent); border-radius: 8px; }
+.log-head { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); font-size: 13px; }
+.log-actions button { margin-left: 6px; }
+.log-body { max-height: 260px; overflow: auto; padding: 8px 10px; }
+.log-body pre { margin: 0; font-size: 12px; white-space: pre-wrap; }
+.log-body pre.stderr { color: #c62828; }
