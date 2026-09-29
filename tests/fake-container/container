@@ -15,42 +15,105 @@ const SERVICE_DOWN_STDERR =
 
 const seededContainers = [
   {
-    id: 'web-1',
+    status: 'running',
     configuration: {
-      image: { reference: 'docker.io/library/nginx:latest', descriptor: { digest: 'sha256:nginx123' } },
-      platform: { os: 'linux', architecture: 'arm64' },
+      ssh: false,
+      initProcess: {
+        supplementalGroups: [],
+        terminal: false,
+        workingDirectory: '/',
+        user: { id: { uid: 0, gid: 0 } },
+        arguments: ['nginx', '-g', 'daemon off;'],
+        environment: [],
+        rlimits: [],
+        executable: 'nginx'
+      },
+      labels: {},
+      rosetta: false,
+      publishedPorts: [],
       resources: { cpus: 2, memoryInBytes: 1073741824 },
-      creationDate: '2026-08-31T12:00:00Z',
-      networks: [{ network: 'default', options: {} }],
-      labels: {}
+      virtualization: false,
+      id: 'web-1',
+      readOnly: false,
+      runtimeHandler: 'container-runtime-linux',
+      platform: { os: 'linux', architecture: 'arm64' },
+      sysctls: {},
+      dns: { nameservers: [], options: [], searchDomains: [] },
+      image: {
+        reference: 'docker.io/library/nginx:latest',
+        descriptor: {
+          digest: 'sha256:nginx123',
+          mediaType: 'application/vnd.oci.image.index.v1+json',
+          size: 10237
+        }
+      },
+      networks: [{ network: 'default', options: { hostname: 'web-1' } }],
+      mounts: [],
+      publishedSockets: [],
+      useInit: false
     },
-    status: {
-      state: 'running',
-      networks: [
-        { network: 'default', hostname: 'web-1', ipv4Address: '192.168.64.2/24', ipv4Gateway: '192.168.64.1' }
-      ]
-    }
+    networks: [
+      {
+        network: 'default',
+        hostname: 'web-1',
+        ipv4Address: '192.168.64.2/24',
+        ipv4Gateway: '192.168.64.1'
+      }
+    ]
   },
   {
-    id: 'db-1',
+    status: 'stopped',
     configuration: {
-      image: { reference: 'docker.io/library/postgres:16', descriptor: { digest: 'sha256:pg123' } },
-      platform: { os: 'linux', architecture: 'arm64' },
+      ssh: false,
+      initProcess: {
+        supplementalGroups: [],
+        terminal: false,
+        workingDirectory: '/',
+        user: { id: { uid: 0, gid: 0 } },
+        arguments: ['postgres'],
+        environment: [],
+        rlimits: [],
+        executable: 'postgres'
+      },
+      labels: {},
+      rosetta: false,
+      publishedPorts: [],
       resources: { cpus: 4, memoryInBytes: 2147483648 },
-      creationDate: '2026-08-31T11:00:00Z',
-      networks: [{ network: 'default', options: {} }],
-      labels: {}
+      virtualization: false,
+      id: 'db-1',
+      readOnly: false,
+      runtimeHandler: 'container-runtime-linux',
+      platform: { os: 'linux', architecture: 'arm64' },
+      sysctls: {},
+      dns: { nameservers: [], options: [], searchDomains: [] },
+      image: {
+        reference: 'docker.io/library/postgres:16',
+        descriptor: {
+          digest: 'sha256:pg123',
+          mediaType: 'application/vnd.oci.image.index.v1+json',
+          size: 10237
+        }
+      },
+      networks: [{ network: 'default', options: { hostname: 'db-1' } }],
+      mounts: [],
+      publishedSockets: [],
+      useInit: false
     },
-    status: { state: 'stopped', networks: [] }
+    networks: []
   }
 ]
 
 function state() {
   if (!STATE_PATH) return { extra: [] }
   try {
-    return JSON.parse(readFileSync(STATE_PATH, 'utf8'))
+    return {
+      extra: [],
+      deleted: [],
+      overrides: {},
+      ...JSON.parse(readFileSync(STATE_PATH, 'utf8'))
+    }
   } catch {
-    return { extra: [] }
+    return { extra: [], deleted: [], overrides: {} }
   }
 }
 
@@ -59,7 +122,83 @@ function save(s) {
 }
 
 function containers() {
-  return seededContainers.filter((c) => !state().deleted?.includes(c.id)).concat(state().extra ?? [])
+  const current = state()
+  return seededContainers
+    .concat(current.extra ?? [])
+    .map((container) => current.overrides?.[container.configuration.id] ?? container)
+    .filter((container) => !current.deleted?.includes(container.configuration.id))
+}
+
+function containerEntry(id, image, status, command = []) {
+  const network = { network: 'default', options: { hostname: id } }
+  return {
+    status,
+    configuration: {
+      ssh: false,
+      initProcess: {
+        supplementalGroups: [],
+        terminal: false,
+        workingDirectory: '/',
+        user: { id: { uid: 0, gid: 0 } },
+        arguments: command.slice(1),
+        environment: [],
+        rlimits: [],
+        executable: command[0] ?? ''
+      },
+      labels: {},
+      rosetta: false,
+      publishedPorts: [],
+      resources: { cpus: 2, memoryInBytes: 1073741824 },
+      virtualization: false,
+      id,
+      readOnly: false,
+      runtimeHandler: 'container-runtime-linux',
+      platform: { os: 'linux', architecture: 'arm64' },
+      sysctls: {},
+      dns: { nameservers: [], options: [], searchDomains: [] },
+      image: {
+        reference: image,
+        descriptor: {
+          digest: 'sha256:fake',
+          mediaType: 'application/vnd.oci.image.index.v1+json',
+          size: 0
+        }
+      },
+      networks: [network],
+      mounts: [],
+      publishedSockets: [],
+      useInit: false
+    },
+    networks:
+      status === 'running'
+        ? [
+            {
+              network: 'default',
+              hostname: id,
+              ipv4Address: '192.168.64.2/24',
+              ipv4Gateway: '192.168.64.1'
+            }
+          ]
+        : []
+  }
+}
+
+function setStatus(container, status) {
+  return {
+    ...container,
+    status,
+    networks:
+      status === 'running'
+        ? [
+            {
+              network: 'default',
+              hostname: container.configuration.networks[0].options.hostname,
+              ipv4Address: '192.168.64.2/24',
+              ipv4Gateway: '192.168.64.1'
+            }
+          ]
+        : []
+  }
 }
 
 function serviceDown() {
@@ -82,7 +221,9 @@ async function main() {
       return
     }
     const all = rest.includes('--all')
-    process.stdout.write(JSON.stringify(all ? containers() : containers().filter((c) => c.status.state === 'running')))
+    process.stdout.write(
+      JSON.stringify(all ? containers() : containers().filter((c) => c.status === 'running'))
+    )
     return
   }
   if (sub === 'system' && rest[0] === 'status') {
@@ -90,19 +231,91 @@ async function main() {
     console.log(
       JSON.stringify({
         status: 'running',
-        client: { version: '0.10.0', build: 'release' },
-        server: { version: '0.10.0' },
-        host: { architecture: 'arm64', operatingSystem: 'macos', cpus: 10 },
-        resources: {
-          containersTotal: containers().length,
-          containersRunning: containers().filter((c) => c.status.state === 'running').length
-        }
+        apiServerAppName: 'container-apiserver',
+        apiServerVersion: 'container-apiserver version 0.10.0 (build: release, commit: fake)',
+        apiServerBuild: 'release',
+        apiServerCommit: 'fake',
+        appRoot: '/fake/app/',
+        installRoot: '/fake/install/'
       })
     )
     return
   }
   if (sub === 'system' && rest[0] === 'start') {
     console.log('Container services started')
+    return
+  }
+  if (sub === 'run' || sub === 'create') {
+    const nameIndex = rest.indexOf('--name')
+    const id = nameIndex >= 0 ? rest[nameIndex + 1] : undefined
+    const positional = rest.filter(
+      (arg, index) =>
+        arg !== '-d' &&
+        !(nameIndex >= 0 && (index === nameIndex || index === nameIndex + 1)) &&
+        !arg.startsWith('-')
+    )
+    const image = positional[0] ?? 'docker.io/library/alpine:3.20'
+    const containerId = id ?? image.split('/').pop().split(':')[0]
+    const command = positional.slice(1)
+    const created = containerEntry(
+      containerId,
+      image,
+      sub === 'run' ? 'running' : 'stopped',
+      command
+    )
+    const current = state()
+    current.extra = (current.extra ?? []).filter(
+      (container) => container.configuration.id !== containerId
+    )
+    current.extra.push(created)
+    current.deleted = (current.deleted ?? []).filter((deletedId) => deletedId !== containerId)
+    if (current.overrides) delete current.overrides[containerId]
+    save(current)
+    console.log(containerId)
+    return
+  }
+  if (sub === 'start' || sub === 'stop') {
+    const id = rest[0]
+    const current = state()
+    const container = containers().find((item) => item.configuration.id === id)
+    if (container) {
+      current.overrides ??= {}
+      current.overrides[id] = setStatus(container, sub === 'start' ? 'running' : 'stopped')
+      current.deleted = (current.deleted ?? []).filter((deletedId) => deletedId !== id)
+      save(current)
+    }
+    return
+  }
+  if (sub === 'delete' || sub === 'rm') {
+    const current = state()
+    current.deleted ??= []
+    for (const id of rest) {
+      if (!current.deleted.includes(id)) current.deleted.push(id)
+    }
+    save(current)
+    return
+  }
+  if (sub === 'prune') {
+    const current = state()
+    const existing = containers()
+    const stopped = existing.filter((container) => container.status !== 'running')
+    const runningIds = new Set(
+      existing
+        .filter((container) => container.status === 'running')
+        .map((container) => container.configuration.id)
+    )
+    current.deleted ??= []
+    for (const container of stopped) {
+      const id = container.configuration.id
+      if (!current.deleted.includes(id)) current.deleted.push(id)
+    }
+    current.extra = (current.extra ?? []).filter((container) =>
+      runningIds.has(container.configuration.id)
+    )
+    current.overrides = Object.fromEntries(
+      Object.entries(current.overrides ?? {}).filter(([id]) => runningIds.has(id))
+    )
+    save(current)
     return
   }
   if (sub === 'build') {
