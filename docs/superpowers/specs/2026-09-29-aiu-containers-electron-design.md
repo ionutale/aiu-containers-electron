@@ -49,7 +49,7 @@ that logs, image management, and run/create can be added later without rework.
 | Decision | Choice | Rationale |
 |---|---|---|
 | Runtime access | Shell out to `container` CLI, `--format json` | ADR-0001; supported client; stable machine-readable output |
-| Stack | electron-vite 5, Electron 44, Svelte 5 + TypeScript 5, pnpm | User choice; no Apple toolchain needed |
+| Stack | electron-vite 5, Electron 39 (scaffold-pinned), Svelte 5 + TypeScript 5, pnpm | User choice; no Apple toolchain needed |
 | Process split | All CLI execution in main process; typed contextBridge API | Renderer stays unprivileged; CLI layer testable headless |
 | List scope | Running by default, "Show stopped" toggle | User choice |
 | Build form | Simple + collapsed Advanced section | User choice |
@@ -102,6 +102,7 @@ preload, no remote content, no `shell.openExternal` on untrusted input.
 | `build:cancel` | `{ runId }` | `{ ok }` |
 | `dialog:pickDirectory` | `{ defaultPath? }` | `string \| null` |
 | `dialog:pickFile` | `{ defaultPath? }` | `string \| null` |
+| `context:inspect` | `{ dir }` | `{ dockerfile: string \| null }` |
 
 Events (main → renderer):
 
