@@ -16,6 +16,13 @@ describe('findContainerBinary', () => {
   it('returns null for a custom env with no CLI (fallbacks apply only to the real environment)', () => {
     expect(findContainerBinary({ PATH: '/nonexistent' })).toBeNull()
   })
+
+  it('prefers CONTAINER_BIN over PATH and fallbacks', () => {
+    const fake = makeFakeCli(tmp())
+    expect(findContainerBinary({ ...fake.env, CONTAINER_BIN: '/custom/container' })).toBe(
+      '/custom/container'
+    )
+  })
 })
 
 describe('runCli', () => {

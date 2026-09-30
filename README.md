@@ -11,15 +11,14 @@ through a typed IPC bridge (`window.containers`).
 
 **Containers**
 
-- Lists containers with their image, status, and command.
+- Lists containers with their image, status, and address.
 - Shows **running containers only** by default (`container list --format json`).
 - **Show stopped** switches to `container list --all --format json`.
 - **Refresh** reloads on demand; the list also auto-refreshes every 3 seconds while the window is
   visible.
 - A **service badge** shows whether the container service is running. When it is not, a banner
   offers **Start service**.
-- If the `container` binary cannot be found, the screen says so and disables actions instead of
-  failing.
+- If the `container` binary cannot be found, the screen shows an install hint instead of failing.
 
 **Build**
 
@@ -58,7 +57,9 @@ pnpm install
 
 ```bash
 pnpm dev        # run in development (electron-vite dev)
-pnpm test       # run the Vitest suite
+pnpm test       # run the Vitest suite (unit, integration, component)
+pnpm test:e2e   # build, then run the Playwright Electron end-to-end suite
+pnpm test:e2e:real  # e2e smoke against the machine's real container CLI
 pnpm typecheck  # type-check main/preload and the Svelte renderer
 pnpm build      # type-check and compile into out/
 pnpm build:mac  # compile and package an unsigned dmg into dist/
@@ -66,6 +67,35 @@ pnpm build:mac  # compile and package an unsigned dmg into dist/
 
 `pnpm build:mac` produces `dist/aiu-containers-electron-<version>.dmg` and an unpacked
 `dist/mac-arm64/Aiu Containers Electron.app`.
+
+## End-to-end tests
+
+`pnpm test:e2e` builds the app and drives the real Electron window with
+[Playwright](https://playwright.dev/). Each spec launches the app with the stateful fake
+`container` CLI (`tests/fake-container/container`) first on `PATH`, so the scenarios are
+deterministic: seeded running/stopped containers, scripted build modes (success, failure,
+blocking for cancellation), and a simulated down service. Covered: the container list, the
+**Show stopped** toggle, the service badge and banners, the auto-refresh, the parse-error and
+CLI-missing states, the whole build form (picker → Dockerfile detection → tag default → validation),
+a successful build with streamed output, a failed build, and **Cancel** proving the build process is
+gone. The suite also asserts the renderer can see `window.containers` but no Node globals.
+
+Playwright runs one worker at a time (each spec owns an Electron app and a temp state file). No
+browser downloads are needed — Electron is the browser. If `pnpm install` tries to fetch browsers,
+set `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`.
+
+`pnpm test:e2e:real` additionally runs one smoke test against your machine's actual `container`
+runtime (the service must be running) and is skipped unless `AIU_E2E_REAL_CLI=1` is set.
+
+### Automation overrides
+
+These are supported for tests and automation (all optional):
+
+| Variable | Effect |
+|---|---|
+| `CONTAINER_BIN` | Use this `container` executable instead of searching `PATH` (an invalid path surfaces as the CLI-missing state). |
+| `AIU_E2E_DIR_DIALOG` | The context-folder picker returns this path instead of opening a native dialog. |
+| `AIU_E2E_FILE_DIALOG` | The Dockerfile picker returns this path instead of opening a native dialog. |
 
 ## First launch (Gatekeeper)
 
@@ -81,7 +111,7 @@ later launches work normally. If the app is still blocked, go to
 - The **first build** pulls the builder image and can take a while; progress is visible in the
   streamed log. Later builds are much faster (use **No cache** to force a full rebuild).
 - Destroying containers and stopping the service are done with the CLI (`container delete`,
-  `container system stop`); the app only lists and builds.
+  `container system stop`); the app lists, builds, and can start the service.
 
 ## Troubleshooting
 

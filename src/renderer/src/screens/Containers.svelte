@@ -73,7 +73,7 @@
     <h1>Containers</h1>
     <span class="badge" class:bad={serviceState === 'not-running'}>{serviceLabel}</span>
     <div class="controls">
-      <label><input type="checkbox" checked={runningOnly} onchange={toggleRunningOnly} /> Show stopped</label>
+      <label><input type="checkbox" checked={!runningOnly} onchange={toggleRunningOnly} /> Show stopped</label>
       <button onclick={load} disabled={loading}>Refresh</button>
     </div>
   </header>

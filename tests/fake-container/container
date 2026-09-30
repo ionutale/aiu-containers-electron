@@ -207,6 +207,12 @@ function serviceDown() {
   process.exit(1)
 }
 
+// Service-down mode can be recovered by `system start` so the UI's
+// down -> Start service -> healthy flow is testable end to end.
+function serviceIsDown() {
+  return MODE === 'service-down' && state().serviceStarted !== true
+}
+
 async function main() {
   const sub = args[0] ?? ''
   const rest = args.slice(1)
@@ -216,7 +222,7 @@ async function main() {
     return
   }
   if (sub === 'list') {
-    if (MODE === 'service-down') serviceDown()
+    if (serviceIsDown()) serviceDown()
     if (MODE === 'bad-json') {
       process.stdout.write('{"oops')
       return
@@ -228,7 +234,7 @@ async function main() {
     return
   }
   if (sub === 'system' && rest[0] === 'status') {
-    if (MODE === 'service-down') serviceDown()
+    if (serviceIsDown()) serviceDown()
     console.log(
       JSON.stringify({
         status: 'running',
@@ -243,6 +249,11 @@ async function main() {
     return
   }
   if (sub === 'system' && rest[0] === 'start') {
+    if (MODE === 'service-down') {
+      const current = state()
+      current.serviceStarted = true
+      save(current)
+    }
     console.log('Container services started')
     return
   }
@@ -332,6 +343,8 @@ async function main() {
     }
     console.log('fake build args: ' + JSON.stringify(rest))
     if (MODE === 'blocking-build') {
+      // Record our pid so cancellation tests can prove the process is gone.
+      if (STATE_PATH) writeFileSync(`${STATE_PATH}.pid`, String(process.pid))
       console.log('#1 [internal] load build definition')
       await sleep(600_000)
       return

@@ -1,9 +1,18 @@
-import { spawnSync } from 'node:child_process'
-import { mkdtempSync } from 'node:fs'
+import { spawn, spawnSync } from 'node:child_process'
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { makeFakeCli } from '../helpers/fakeCli'
+
+async function waitFor(predicate: () => boolean, timeoutMs: number): Promise<void> {
+  const started = Date.now()
+  while (Date.now() - started < timeoutMs) {
+    if (predicate()) return
+    await new Promise((resolve) => setTimeout(resolve, 25))
+  }
+  throw new Error('waitFor timed out')
+}
 
 function run(fake: ReturnType<typeof makeFakeCli>, args: string[]): string {
   const result = spawnSync(join(fake.binDir, 'container'), args, { env: fake.env })
@@ -117,5 +126,42 @@ describe('fake container CLI', () => {
         (item: { configuration: { id: string } }) => item.configuration.id
       )
     ).toEqual(['web-1'])
+  })
+
+  it('recovers from service-down once system start is called', () => {
+    const fake = makeFakeCli(mkdtempSync(join(tmpdir(), 'fakecli-')), { mode: 'service-down' })
+    expect(() => run(fake, ['list', '--format', 'json'])).toThrow()
+    expect(() => run(fake, ['system', 'status', '--format', 'json'])).toThrow()
+
+    expect(run(fake, ['system', 'start'])).toContain('started')
+
+    expect(JSON.parse(run(fake, ['system', 'status', '--format', 'json'])).status).toBe('running')
+    expect(JSON.parse(run(fake, ['list', '--format', 'json']))).toHaveLength(1)
+  })
+
+  it('records the build pid in blocking mode so cancellation can be verified', async () => {
+    const fake = makeFakeCli(mkdtempSync(join(tmpdir(), 'fakecli-')), { mode: 'blocking-build' })
+    const child = spawn(join(fake.binDir, 'container'), ['build', '-t', 'x:latest', '.'], {
+      env: fake.env
+    })
+    try {
+      const pidFile = `${fake.statePath}.pid`
+      await waitFor(() => existsSync(pidFile), 5000)
+      const pid = Number(readFileSync(pidFile, 'utf8'))
+      expect(pid).toBe(child.pid)
+      expect(() => process.kill(pid, 0)).not.toThrow()
+
+      child.kill('SIGTERM')
+      await waitFor(() => {
+        try {
+          process.kill(pid, 0)
+          return false
+        } catch {
+          return true
+        }
+      }, 5000)
+    } finally {
+      child.kill('SIGKILL')
+    }
   })
 })

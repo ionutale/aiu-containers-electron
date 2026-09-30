@@ -71,6 +71,9 @@ app.whenReady().then(() => {
     buildCancel: (runId) => Promise.resolve({ ok: buildManager.cancel(runId) }),
     findDockerfile: (dir) => findDockerfile(dir),
     pickDirectory: async (defaultPath) => {
+      // Automation override: lets end-to-end tests drive the picker flow
+      // without a native dialog (see README "Automation overrides").
+      if (process.env.AIU_E2E_DIR_DIALOG) return process.env.AIU_E2E_DIR_DIALOG
       const win = currentWindow()
       if (!win) return null
       const result = await dialog.showOpenDialog(win, {
@@ -80,6 +83,7 @@ app.whenReady().then(() => {
       return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0]
     },
     pickFile: async (defaultPath) => {
+      if (process.env.AIU_E2E_FILE_DIALOG) return process.env.AIU_E2E_FILE_DIALOG
       const win = currentWindow()
       if (!win) return null
       const result = await dialog.showOpenDialog(win, {

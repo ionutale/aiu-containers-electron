@@ -32,6 +32,13 @@ describe('listContainers', () => {
     expect(result).toMatchObject({ ok: false, error: { code: 'CLI_MISSING' } })
   })
 
+  it('maps a bad CONTAINER_BIN override to CLI_MISSING', async () => {
+    const result = await listContainers(true, {
+      env: { ...process.env, CONTAINER_BIN: '/nonexistent/container' }
+    })
+    expect(result).toMatchObject({ ok: false, error: { code: 'CLI_MISSING' } })
+  })
+
   it('maps malformed JSON to PARSE_ERROR with an excerpt', async () => {
     const fake = makeFakeCli(tmp(), { mode: 'bad-json' })
     const result = await listContainers(true, { env: fake.env })

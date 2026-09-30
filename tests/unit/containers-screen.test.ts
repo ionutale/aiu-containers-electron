@@ -56,8 +56,11 @@ describe('Containers screen', () => {
     ;(window as unknown as { containers: ContainersApi }).containers = api
     render(Containers)
     await waitFor(() => expect(api.list).toHaveBeenCalledWith(true))
-    await fireEvent.click(screen.getByLabelText('Show stopped'))
+    const toggle = screen.getByLabelText('Show stopped')
+    expect(toggle).not.toBeChecked()
+    await fireEvent.click(toggle)
     await waitFor(() => expect(api.list).toHaveBeenLastCalledWith(false))
+    expect(toggle).toBeChecked()
   })
 
   it('shows a service-down banner and starts the service, then reloads', async () => {
