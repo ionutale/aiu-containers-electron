@@ -17,11 +17,14 @@ describe('findContainerBinary', () => {
     expect(findContainerBinary({ PATH: '/nonexistent' })).toBeNull()
   })
 
-  it('prefers CONTAINER_BIN over PATH and fallbacks', () => {
+  it('prefers an executable CONTAINER_BIN over PATH and fallbacks', () => {
     const fake = makeFakeCli(tmp())
-    expect(findContainerBinary({ ...fake.env, CONTAINER_BIN: '/custom/container' })).toBe(
-      '/custom/container'
-    )
+    const bin = join(fake.binDir, 'container')
+    expect(findContainerBinary({ ...fake.env, CONTAINER_BIN: bin })).toBe(bin)
+  })
+
+  it('ignores a non-executable CONTAINER_BIN so it surfaces as CLI_MISSING', () => {
+    expect(findContainerBinary({ PATH: '/nonexistent', CONTAINER_BIN: '/nonexistent/container' })).toBeNull()
   })
 })
 

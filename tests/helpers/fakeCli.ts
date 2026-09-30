@@ -19,11 +19,14 @@ export function makeFakeCli(root: string, opts: { mode?: FakeMode } = {}): FakeC
   copyFileSync(FAKE_SOURCE, target)
   chmodSync(target, 0o755)
   const statePath = join(root, 'state.json')
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    PATH: `${binDir}:${process.env.PATH ?? ''}`,
-    FAKE_CONTAINER_STATE: statePath
-  }
+  // Scrub ambient overrides so a developer's shell cannot change what the
+  // fake-based tests actually exercise.
+  const env: NodeJS.ProcessEnv = { ...process.env }
+  delete env.CONTAINER_BIN
+  delete env.FAKE_CONTAINER_MODE
+  delete env.FAKE_CONTAINER_STATE
+  env.PATH = `${binDir}:${process.env.PATH ?? ''}`
+  env.FAKE_CONTAINER_STATE = statePath
   if (opts.mode) env.FAKE_CONTAINER_MODE = opts.mode
   return { binDir, statePath, env }
 }

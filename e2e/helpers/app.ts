@@ -78,20 +78,36 @@ export async function launchApp(
   const fake = options.useRealCli ? null : makeFakeCli(root, options.mode)
   if (fake && options.prepare) options.prepare(fake)
 
-  const env: NodeJS.ProcessEnv = {
-    ...(fake ? fake.env : process.env),
-    ...(options.containerBin ? { CONTAINER_BIN: options.containerBin } : {}),
-    ...(options.dirDialog ? { AIU_E2E_DIR_DIALOG: options.dirDialog } : {}),
-    ...(options.fileDialog ? { AIU_E2E_FILE_DIALOG: options.fileDialog } : {})
+  const base = fake ? fake.env : process.env
+  // Scrub ambient overrides so the launched app cannot pick up a developer's
+  // shell configuration instead of the fake runtime this spec intends.
+  const env: NodeJS.ProcessEnv = { ...base }
+  delete env.CONTAINER_BIN
+  delete env.AIU_E2E_DIR_DIALOG
+  delete env.AIU_E2E_FILE_DIALOG
+  if (!options.mode) delete env.FAKE_CONTAINER_MODE
+  if (!fake) {
+    delete env.FAKE_CONTAINER_STATE
+    delete env.FAKE_CONTAINER_MODE
   }
+  if (options.containerBin) env.CONTAINER_BIN = options.containerBin
+  if (options.dirDialog) env.AIU_E2E_DIR_DIALOG = options.dirDialog
+  if (options.fileDialog) env.AIU_E2E_FILE_DIALOG = options.fileDialog
 
   const app = await electron.launch({ args: [MAIN], env: stringEnv(env) })
-  const window = await app.firstWindow()
   const errors: string[] = []
-  window.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`))
-  window.on('console', (message) => {
-    if (message.type() === 'error') errors.push(`console: ${message.text()}`)
-  })
+  const attached = new WeakSet<Page>()
+  const attach = (page: Page): void => {
+    if (attached.has(page)) return
+    attached.add(page)
+    page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`))
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(`console: ${message.text()}`)
+    })
+  }
+  app.on('window', attach)
+  const window = await app.firstWindow()
+  attach(window)
   await window.waitForLoadState('domcontentloaded')
 
   return {

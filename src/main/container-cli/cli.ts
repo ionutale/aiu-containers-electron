@@ -33,9 +33,12 @@ function isExecutable(p: string): boolean {
 }
 
 export function findContainerBinary(env: NodeJS.ProcessEnv = process.env, includeFallbacks = env === process.env): string | null {
-  // Explicit override wins over PATH and fallbacks. The path is returned
-  // as-is so an invalid override surfaces as a spawn error (CLI_MISSING).
-  if (env.CONTAINER_BIN) return env.CONTAINER_BIN
+  // Explicit override wins over PATH and fallbacks, but only when it is
+  // actually executable; anything else falls through to the normal search
+  // (and ends up as the CLI-missing state).
+  if (env.CONTAINER_BIN) {
+    return isExecutable(env.CONTAINER_BIN) ? env.CONTAINER_BIN : null
+  }
   for (const dir of (env.PATH ?? '').split(delimiter).filter(Boolean)) {
     const candidate = join(dir, 'container')
     if (isExecutable(candidate)) return candidate
