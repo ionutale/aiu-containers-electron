@@ -34,8 +34,8 @@ function isExecutable(p: string): boolean {
 
 export function findContainerBinary(env: NodeJS.ProcessEnv = process.env, includeFallbacks = env === process.env): string | null {
   // Explicit override wins over PATH and fallbacks, but only when it is
-  // actually executable; anything else falls through to the normal search
-  // (and ends up as the CLI-missing state).
+  // actually executable; anything else yields null here, which the caller
+  // turns into the CLI-missing state (ENOENT).
   if (env.CONTAINER_BIN) {
     return isExecutable(env.CONTAINER_BIN) ? env.CONTAINER_BIN : null
   }
