@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -30,6 +30,20 @@ describe('BuildManager', () => {
     expect(lines.map((l) => l.line).join('\n')).toContain('fake: done')
     expect(getDone()).toMatchObject({ code: 0, canceled: false })
     expect(getDone()?.error).toBeUndefined()
+  })
+
+  it('builds with an auto-detected relative Dockerfile resolved against the context', async () => {
+    const ctx = mkdtempSync(join(tmpdir(), 'ctx-'))
+    writeFileSync(join(ctx, 'Dockerfile'), 'FROM alpine:3.20\n')
+    const { mgr, lines, events, getDone } = setup('default')
+    // Regression: the renderer passes the bare name from findDockerfile; the
+    // real CLI resolves a relative -f against cwd, so buildArgv must absolutize it.
+    const started = mgr.start({ ...req(ctx), dockerfilePath: 'Dockerfile' }, events)
+    expect(started.ok).toBe(true)
+    await new Promise((r) => setTimeout(r, 1500))
+    expect(getDone()).toMatchObject({ code: 0, canceled: false })
+    expect(getDone()?.error).toBeUndefined()
+    expect(lines.map((l) => l.line).join('\n')).toContain('fake: done')
   })
 
   it('reports BUILD_FAILED with the last stderr line', async () => {

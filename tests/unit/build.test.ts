@@ -40,6 +40,23 @@ describe('buildArgv', () => {
     expect(buildArgv(req)).toEqual(['build', '-t', 'app:latest', '/ctx'])
   })
 
+  it('resolves a relative dockerfile path against the context dir', () => {
+    const req = base({ contextDir: '/ctx', dockerfilePath: 'Dockerfile' })
+    expect(buildArgv(req)).toEqual(['build', '-t', 'app:latest', '-f', '/ctx/Dockerfile', '/ctx'])
+  })
+
+  it('leaves an absolute dockerfile path untouched', () => {
+    const req = base({ contextDir: '/ctx', dockerfilePath: '/ctx/Dockerfile.dev' })
+    expect(buildArgv(req)).toEqual([
+      'build',
+      '-t',
+      'app:latest',
+      '-f',
+      '/ctx/Dockerfile.dev',
+      '/ctx'
+    ])
+  })
+
   it('includes every advanced option in a stable order', () => {
     const req = base({
       contextDir: '/ctx',

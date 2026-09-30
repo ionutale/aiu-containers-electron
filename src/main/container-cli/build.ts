@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync, statSync } from 'node:fs'
+import { isAbsolute, join } from 'node:path'
 import { classifyCliFailure } from '../../shared/errors'
 import type { BuildDoneEvent, BuildLine, BuildRequest, BuildStartResult } from '../../shared/types'
 import { streamCli, type StreamHandle } from './cli'
@@ -23,7 +24,14 @@ export function validateBuildRequest(req: BuildRequest): string[] {
 
 export function buildArgv(req: BuildRequest): string[] {
   const args = ['build', '-t', req.tag]
-  if (req.dockerfilePath) args.push('-f', req.dockerfilePath)
+  if (req.dockerfilePath) {
+    // The real CLI resolves a relative -f against its cwd, not the context, so
+    // anchor it to the context dir ourselves.
+    const dockerfile = isAbsolute(req.dockerfilePath)
+      ? req.dockerfilePath
+      : join(req.contextDir, req.dockerfilePath)
+    args.push('-f', dockerfile)
+  }
   for (const a of req.buildArgs) args.push('--build-arg', `${a.key}=${a.value}`)
   if (req.target) args.push('--target', req.target)
   if (req.noCache) args.push('--no-cache')

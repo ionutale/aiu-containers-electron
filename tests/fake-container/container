@@ -2,7 +2,8 @@
 // Stateful fake of Apple's `container` CLI (v0.10.0 shapes) for tests.
 // Modes via FAKE_CONTAINER_MODE: default | service-down | bad-json |
 // slow-build | blocking-build | failing-build
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 const MODE = process.env.FAKE_CONTAINER_MODE ?? 'default'
 const STATE_PATH = process.env.FAKE_CONTAINER_STATE
@@ -319,6 +320,16 @@ async function main() {
     return
   }
   if (sub === 'build') {
+    // Mirror the real CLI: a relative -f is resolved against the process cwd,
+    // not the build context, so an unresolved relative path must fail here.
+    const fIndex = rest.indexOf('-f')
+    if (fIndex >= 0) {
+      const dockerfile = rest[fIndex + 1]
+      if (!dockerfile || !existsSync(resolve(process.cwd(), dockerfile))) {
+        process.stderr.write(`dockerfile does not exist ${dockerfile ?? ''}\n`)
+        process.exit(1)
+      }
+    }
     console.log('fake build args: ' + JSON.stringify(rest))
     if (MODE === 'blocking-build') {
       console.log('#1 [internal] load build definition')

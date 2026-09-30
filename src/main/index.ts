@@ -9,8 +9,10 @@ import { findDockerfile } from './context'
 import { registerIpc } from './ipc'
 import { CHANNELS } from '../shared/api'
 
+let mainWindow: BrowserWindow | null = null
+
 function createWindow(): BrowserWindow {
-  const mainWindow = new BrowserWindow({
+  const win = new BrowserWindow({
     width: 1040,
     height: 720,
     show: false,
@@ -23,24 +25,32 @@ function createWindow(): BrowserWindow {
       sandbox: true
     }
   })
-  mainWindow.on('ready-to-show', () => mainWindow.show())
-  mainWindow.webContents.setWindowOpenHandler((details) => {
+  mainWindow = win
+  win.on('ready-to-show', () => win.show())
+  win.on('closed', () => {
+    if (mainWindow === win) mainWindow = null
+  })
+  win.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    win.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    win.loadFile(join(__dirname, '../renderer/index.html'))
   }
-  return mainWindow
+  return win
+}
+
+function currentWindow(): BrowserWindow | null {
+  return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
 }
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.ionutale.aiu-containers-electron')
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
-  const mainWindow = createWindow()
+  createWindow()
   const buildManager = new BuildManager()
 
   registerIpc(ipcMain, {
@@ -50,21 +60,29 @@ app.whenReady().then(() => {
     buildStart: (req) =>
       Promise.resolve(
         buildManager.start(req, {
-          onLine: (runId, line) => mainWindow.webContents.send(CHANNELS.buildOutput, { runId, ...line }),
-          onDone: (runId, done) => mainWindow.webContents.send(CHANNELS.buildDone, { runId, ...done })
+          onLine: (runId, line) => {
+            currentWindow()?.webContents.send(CHANNELS.buildOutput, { runId, ...line })
+          },
+          onDone: (runId, done) => {
+            currentWindow()?.webContents.send(CHANNELS.buildDone, { runId, ...done })
+          }
         })
       ),
     buildCancel: (runId) => Promise.resolve({ ok: buildManager.cancel(runId) }),
     findDockerfile: (dir) => findDockerfile(dir),
     pickDirectory: async (defaultPath) => {
-      const result = await dialog.showOpenDialog(mainWindow, {
+      const win = currentWindow()
+      if (!win) return null
+      const result = await dialog.showOpenDialog(win, {
         properties: ['openDirectory', 'createDirectory'],
         defaultPath
       })
       return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0]
     },
     pickFile: async (defaultPath) => {
-      const result = await dialog.showOpenDialog(mainWindow, {
+      const win = currentWindow()
+      if (!win) return null
+      const result = await dialog.showOpenDialog(win, {
         properties: ['openFile'],
         defaultPath
       })
