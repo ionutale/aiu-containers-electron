@@ -6,14 +6,15 @@
   "author": "Ion Utale",
   "homepage": "https://electron-vite.org",
   "engines": {
-    "node": ">=20"
+    "node": ">=26"
   },
   "scripts": {
     "format": "prettier --plugin prettier-plugin-svelte --write .",
     "lint": "eslint --cache .",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:tests": "tsc --noEmit -p tsconfig.tests.json",
     "svelte-check": "svelte-check --tsconfig ./tsconfig.web.json",
-    "typecheck": "pnpm typecheck:node && pnpm svelte-check",
+    "typecheck": "pnpm typecheck:node && pnpm typecheck:tests && pnpm svelte-check",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "pnpm build && playwright test",
@@ -21,11 +22,10 @@
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "build": "pnpm typecheck && electron-vite build",
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall": "electron-builder install-app-deps && node scripts/ensure-electron-dist.mjs",
+    "doctor": "node scripts/ensure-electron-dist.mjs",
     "build:unpack": "pnpm build && electron-builder --dir",
-    "build:win": "pnpm build && electron-builder --win",
-    "build:mac": "pnpm build && electron-builder --mac",
-    "build:linux": "pnpm build && electron-builder --linux"
+    "build:mac": "pnpm build && electron-builder --mac"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0"
@@ -52,5 +52,6 @@
     "typescript": "^5.9.3",
     "vite": "^7.2.6",
     "vitest": "^5.0.2"
-  }
+  },
+  "packageManager": "pnpm@12.6.0"
 }

@@ -45,7 +45,8 @@ through a typed IPC bridge (`window.containers`).
   The app looks for `container` on `PATH`, then falls back to `/usr/local/bin/container` and
   `/opt/homebrew/bin/container`.
 
-- Node.js 20+ and [pnpm](https://pnpm.io/).
+- Node.js 26+ (the dev toolchain — jsdom 30 — requires it) and [pnpm](https://pnpm.io/) 12
+  (pinned via `packageManager`).
 
 ## Install
 
@@ -60,7 +61,9 @@ pnpm dev        # run in development (electron-vite dev)
 pnpm test       # run the Vitest suite (unit, integration, component)
 pnpm test:e2e   # build, then run the Playwright Electron end-to-end suite
 pnpm test:e2e:real  # e2e smoke against the machine's real container CLI
-pnpm typecheck  # type-check main/preload and the Svelte renderer
+pnpm typecheck  # type-check main/preload, tests/e2e/scripts, and the Svelte renderer
+pnpm lint       # eslint + prettier
+pnpm doctor     # verify (and repair) the extracted Electron binary
 pnpm build      # type-check and compile into out/
 pnpm build:mac  # compile and package an unsigned dmg into dist/
 ```
@@ -117,8 +120,16 @@ later launches work normally. If the app is still blocked, go to
 
 **The app won't start and says "Electron uninstall" / "Electron failed to install correctly"**
 
-The Electron binary didn't extract during install. Run `pnpm rebuild electron`. If
-`node_modules/electron/dist/Electron.app` still doesn't appear, extract the cached zip manually:
+Electron's install step can stall (its `extract-zip` postinstall exits successfully after extracting a
+single file on some Node/macOS combinations). `pnpm install` now repairs this automatically — the
+`postinstall` hook runs `scripts/ensure-electron-dist.mjs`, which detects the broken state and
+re-extracts the cached zip with macOS `ditto`. You can re-run the check any time:
+
+```bash
+pnpm doctor
+```
+
+If it reports that no cached zip was found, run `pnpm rebuild electron`, or extract manually:
 
 ```bash
 cd node_modules/.pnpm/electron@*/node_modules/electron
@@ -127,9 +138,7 @@ ditto -xk ~/Library/Caches/electron/*/electron-v*-darwin-arm64.zip dist
 printf 'Electron.app/Contents/MacOS/Electron' > path.txt
 ```
 
-This is a known environment issue with Electron's install step (its `extract-zip` postinstall can
-stall on some Node/macOS combinations and exit successfully after extracting a single file). It is
-not something the app does.
+This is an environment issue with Electron's install step, not something the app does.
 
 **The Containers screen says the service is not running**
 
