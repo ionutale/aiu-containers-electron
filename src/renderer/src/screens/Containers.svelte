@@ -19,9 +19,14 @@
   let inFlight = false
 
   async function refreshServiceState(): Promise<void> {
-    const result = await getApi().systemStatus()
-    if (result.ok === true) serviceState = result.status.status === 'running' ? 'running' : 'not-running'
-    else serviceState = result.error.code === 'SERVICE_NOT_RUNNING' ? 'not-running' : 'unknown'
+    try {
+      const result = await getApi().systemStatus()
+      if (result.ok === true)
+        serviceState = result.status.status === 'running' ? 'running' : 'not-running'
+      else serviceState = result.error.code === 'SERVICE_NOT_RUNNING' ? 'not-running' : 'unknown'
+    } catch {
+      serviceState = 'unknown'
+    }
   }
 
   async function load(): Promise<void> {
@@ -37,6 +42,9 @@
         containers = result.containers
         error = null
       }
+    } catch (e) {
+      error = { code: 'UNKNOWN', message: e instanceof Error ? e.message : String(e) }
+      containers = []
     } finally {
       loading = false
       inFlight = false
@@ -53,6 +61,8 @@
     try {
       await getApi().systemStart()
       await Promise.all([load(), refreshServiceState()])
+    } catch (e) {
+      error = { code: 'UNKNOWN', message: e instanceof Error ? e.message : String(e) }
     } finally {
       startingService = false
     }
@@ -73,7 +83,9 @@
     <h1>Containers</h1>
     <span class="badge" class:bad={serviceState === 'not-running'}>{serviceLabel}</span>
     <div class="controls">
-      <label><input type="checkbox" checked={!runningOnly} onchange={toggleRunningOnly} /> Show stopped</label>
+      <label
+        ><input type="checkbox" checked={!runningOnly} onchange={toggleRunningOnly} /> Show stopped</label
+      >
       <button onclick={load} disabled={loading}>Refresh</button>
     </div>
   </header>
@@ -87,7 +99,9 @@
     </div>
   {:else if error?.code === 'CLI_MISSING'}
     <div class="banner">
-      <p>The `container` CLI was not found. Install Apple's container runtime, then restart this app.</p>
+      <p>
+        The `container` CLI was not found. Install Apple's container runtime, then restart this app.
+      </p>
     </div>
   {:else if error}
     <div class="banner">

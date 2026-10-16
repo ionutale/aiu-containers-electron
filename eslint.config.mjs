@@ -21,5 +21,13 @@ export default defineConfig(
       'svelte/no-unused-svelte-ignore': 'off'
     }
   },
+  {
+    // Plain-JS files (build scripts) have no type annotations for this rule to
+    // check; their types live in JSDoc and are checked by tsconfig.tests.json.
+    files: ['**/*.{js,mjs,cjs}'],
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off'
+    }
+  },
   eslintConfigPrettier
 )

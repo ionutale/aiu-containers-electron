@@ -3,10 +3,18 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { BuildManager } from '../../src/main/container-cli/build'
-import type { BuildDoneEvent, BuildLine } from '../../src/shared/types'
+import type { BuildDoneEvent, BuildLine, BuildRequest } from '../../src/shared/types'
 import { makeFakeCli, type FakeMode } from '../helpers/fakeCli'
 
-function setup(mode: FakeMode) {
+function setup(mode: FakeMode): {
+  mgr: BuildManager
+  lines: BuildLine[]
+  events: {
+    onLine(runId: string, line: BuildLine): void
+    onDone(runId: string, done: Omit<BuildDoneEvent, 'runId'>): void
+  }
+  getDone: () => Omit<BuildDoneEvent, 'runId'> | null
+} {
   const fake = makeFakeCli(mkdtempSync(join(tmpdir(), 'bm-')), { mode })
   const mgr = new BuildManager({ env: fake.env })
   const lines: BuildLine[] = []
@@ -18,7 +26,12 @@ function setup(mode: FakeMode) {
   return { mgr, lines, events, getDone: () => done }
 }
 
-const req = (contextDir: string) => ({ contextDir, tag: 'app:latest', buildArgs: [], noCache: false })
+const req = (contextDir: string): BuildRequest => ({
+  contextDir,
+  tag: 'app:latest',
+  buildArgs: [],
+  noCache: false
+})
 
 describe('BuildManager', () => {
   it('streams build output and finishes cleanly', async () => {

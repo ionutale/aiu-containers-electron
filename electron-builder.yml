@@ -17,8 +17,6 @@ mac:
   identity: null
   target:
     - dmg
-  entitlementsInherit: build/entitlements.mac.plist
-  notarize: false
 dmg:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false

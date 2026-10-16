@@ -8,10 +8,16 @@
 <div class="app">
   <nav>
     <span class="brand">Aiu Containers</span>
-    <button class="nav-item" class:active={view === 'containers'} onclick={() => (view = 'containers')}>
+    <button
+      class="nav-item"
+      class:active={view === 'containers'}
+      onclick={() => (view = 'containers')}
+    >
       Containers
     </button>
-    <button class="nav-item" class:active={view === 'build'} onclick={() => (view = 'build')}>Build</button>
+    <button class="nav-item" class:active={view === 'build'} onclick={() => (view = 'build')}
+      >Build</button
+    >
   </nav>
   <main>
     {#if view === 'containers'}

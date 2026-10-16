@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { existsSync, statSync } from 'node:fs'
+import { statSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import { classifyCliFailure } from '../../shared/errors'
 import type { BuildDoneEvent, BuildLine, BuildRequest, BuildStartResult } from '../../shared/types'
@@ -11,13 +11,21 @@ export function validateBuildRequest(req: BuildRequest): string[] {
   const problems: string[] = []
   if (!req.contextDir) {
     problems.push('Choose a build context directory.')
-  } else if (!existsSync(req.contextDir) || !statSync(req.contextDir).isDirectory()) {
-    problems.push(`Build context is not a directory: ${req.contextDir}`)
+  } else {
+    try {
+      if (!statSync(req.contextDir).isDirectory()) {
+        problems.push(`Build context is not a directory: ${req.contextDir}`)
+      }
+    } catch {
+      problems.push(`Build context is not a readable directory: ${req.contextDir}`)
+    }
   }
   if (!req.tag) {
     problems.push('Image tag is required.')
   } else if (!TAG_PATTERN.test(req.tag)) {
-    problems.push('Tag must be lowercase: letters, numbers, periods, dashes, underscores, slashes, colons.')
+    problems.push(
+      'Tag must be lowercase: letters, numbers, periods, dashes, underscores, slashes, colons.'
+    )
   }
   return problems
 }

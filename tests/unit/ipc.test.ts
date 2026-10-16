@@ -1,12 +1,28 @@
+import type { IpcMain } from 'electron'
 import { describe, expect, it, vi } from 'vitest'
 import { registerIpc, type IpcDeps } from '../../src/main/ipc'
 import { CHANNELS } from '../../src/shared/api'
 
 type Handler = (event: unknown, payload?: unknown) => unknown
 
-function fakeIpcMain(): { handlers: Map<string, Handler>; handle: (channel: string, fn: Handler) => void } {
+interface FakeIpcMain {
+  handlers: Map<string, Handler>
+  handle: (channel: string, fn: Handler) => void
+  /** `registerIpc` only needs `handle`; the event object is unused by it. */
+  asIpcMain: () => Pick<IpcMain, 'handle'>
+}
+
+function fakeIpcMain(): FakeIpcMain {
   const handlers = new Map<string, Handler>()
-  return { handlers, handle: (channel, fn) => void handlers.set(channel, fn) }
+  return {
+    handlers,
+    handle: (channel, fn) => void handlers.set(channel, fn),
+    asIpcMain: () =>
+      ({ handle: (channel, fn) => void handlers.set(channel, fn) }) as unknown as Pick<
+        IpcMain,
+        'handle'
+      >
+  }
 }
 
 function deps(over: Partial<IpcDeps> = {}): IpcDeps {
@@ -26,7 +42,7 @@ function deps(over: Partial<IpcDeps> = {}): IpcDeps {
 describe('registerIpc', () => {
   it('registers every channel once', () => {
     const main = fakeIpcMain()
-    registerIpc(main, deps())
+    registerIpc(main.asIpcMain(), deps())
     expect([...main.handlers.keys()].sort()).toEqual(
       [
         CHANNELS.buildCancel,
@@ -44,7 +60,7 @@ describe('registerIpc', () => {
   it('defaults runningOnly to true', async () => {
     const d = deps()
     const main = fakeIpcMain()
-    registerIpc(main, d)
+    registerIpc(main.asIpcMain(), d)
     await main.handlers.get(CHANNELS.list)!(null, undefined)
     expect(d.listContainers).toHaveBeenCalledWith(true)
   })
@@ -52,7 +68,7 @@ describe('registerIpc', () => {
   it('passes through payloads', async () => {
     const d = deps()
     const main = fakeIpcMain()
-    registerIpc(main, d)
+    registerIpc(main.asIpcMain(), d)
     await main.handlers.get(CHANNELS.list)!(null, { runningOnly: false })
     expect(d.listContainers).toHaveBeenCalledWith(false)
     await main.handlers.get(CHANNELS.buildCancel)!(null, { runId: 'abc' })

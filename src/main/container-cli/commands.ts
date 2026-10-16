@@ -16,7 +16,10 @@ function asFailureInput(r: CliRunResult): {
   return { spawnError: r.spawnError, exitCode: r.code, stderr: r.stderr, timedOut: r.timedOut }
 }
 
-function parseErrorResult(err: unknown, excerpt: string): { code: 'PARSE_ERROR'; message: string; stderr: string } {
+function parseErrorResult(
+  err: unknown,
+  excerpt: string
+): { code: 'PARSE_ERROR'; message: string; stderr: string } {
   return {
     code: 'PARSE_ERROR',
     message: err instanceof ParseError ? err.message : String(err),
@@ -27,7 +30,8 @@ function parseErrorResult(err: unknown, excerpt: string): { code: 'PARSE_ERROR';
 export async function listContainers(runningOnly: boolean, opts: Opts = {}): Promise<ListResult> {
   const args = runningOnly ? ['list', '--format', 'json'] : ['list', '--all', '--format', 'json']
   const r = await runCli(args, { env: opts.env, timeoutMs: 10_000 })
-  if (r.spawnError || r.timedOut || r.code !== 0) return { ok: false, error: classifyCliFailure(asFailureInput(r)) }
+  if (r.spawnError || r.timedOut || r.code !== 0)
+    return { ok: false, error: classifyCliFailure(asFailureInput(r)) }
   try {
     return { ok: true, containers: parseContainerList(r.stdout) }
   } catch (err) {
@@ -36,8 +40,12 @@ export async function listContainers(runningOnly: boolean, opts: Opts = {}): Pro
 }
 
 export async function systemStatus(opts: Opts = {}): Promise<SystemStatusResult> {
-  const r = await runCli(['system', 'status', '--format', 'json'], { env: opts.env, timeoutMs: 10_000 })
-  if (r.spawnError || r.timedOut || r.code !== 0) return { ok: false, error: classifyCliFailure(asFailureInput(r)) }
+  const r = await runCli(['system', 'status', '--format', 'json'], {
+    env: opts.env,
+    timeoutMs: 10_000
+  })
+  if (r.spawnError || r.timedOut || r.code !== 0)
+    return { ok: false, error: classifyCliFailure(asFailureInput(r)) }
   try {
     return { ok: true, status: parseSystemStatus(r.stdout) }
   } catch (err) {
@@ -47,6 +55,7 @@ export async function systemStatus(opts: Opts = {}): Promise<SystemStatusResult>
 
 export async function startSystem(opts: Opts = {}): Promise<ActionResult> {
   const r = await runCli(['system', 'start'], { env: opts.env, timeoutMs: 120_000 })
-  if (r.spawnError || r.timedOut || r.code !== 0) return { ok: false, error: classifyCliFailure(asFailureInput(r)) }
+  if (r.spawnError || r.timedOut || r.code !== 0)
+    return { ok: false, error: classifyCliFailure(asFailureInput(r)) }
   return { ok: true }
 }

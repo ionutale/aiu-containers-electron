@@ -85,7 +85,10 @@ test('builds, streams the log, and reports success in the footer', async () => {
 })
 
 test('reports a failed build with the backend message', async () => {
-  const app = await launchApp({ mode: 'failing-build', dirDialog: tempContext('FROM alpine:3.20\n') })
+  const app = await launchApp({
+    mode: 'failing-build',
+    dirDialog: tempContext('FROM alpine:3.20\n')
+  })
   try {
     await openBuild(app.window)
     await app.window.getByRole('button', { name: 'Choose…' }).click()

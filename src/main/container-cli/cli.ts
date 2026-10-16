@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { accessSync, constants } from 'node:fs'
+import { accessSync, constants, statSync } from 'node:fs'
 import { delimiter, join } from 'node:path'
 
 export interface CliRunResult {
@@ -25,6 +25,8 @@ const FALLBACK_PATHS = ['/usr/local/bin/container', '/opt/homebrew/bin/container
 
 function isExecutable(p: string): boolean {
   try {
+    // Must be a regular file: directories satisfy X_OK but cannot be spawned.
+    if (!statSync(p).isFile()) return false
     accessSync(p, constants.X_OK)
     return true
   } catch {
@@ -32,7 +34,10 @@ function isExecutable(p: string): boolean {
   }
 }
 
-export function findContainerBinary(env: NodeJS.ProcessEnv = process.env, includeFallbacks = env === process.env): string | null {
+export function findContainerBinary(
+  env: NodeJS.ProcessEnv = process.env,
+  includeFallbacks = env === process.env
+): string | null {
   // Explicit override wins over PATH and fallbacks, but only when it is
   // actually executable; anything else yields null here, which the caller
   // turns into the CLI-missing state (ENOENT).
@@ -57,7 +62,9 @@ function missingResult(): CliRunResult {
     signal: null,
     stdout: '',
     stderr: '',
-    spawnError: Object.assign(new Error('container not found'), { code: 'ENOENT' }) as NodeJS.ErrnoException,
+    spawnError: Object.assign(new Error('container not found'), {
+      code: 'ENOENT'
+    }) as NodeJS.ErrnoException,
     timedOut: false
   }
 }
@@ -75,7 +82,11 @@ export function runCli(
     let stderr = ''
     let timedOut = false
     let settled = false
-    const finish = (code: number | null, signal: NodeJS.Signals | null, spawnError: NodeJS.ErrnoException | null): void => {
+    const finish = (
+      code: number | null,
+      signal: NodeJS.Signals | null,
+      spawnError: NodeJS.ErrnoException | null
+    ): void => {
       if (settled) return
       settled = true
       if (timer) clearTimeout(timer)
@@ -143,6 +154,9 @@ export function streamCli(
   return {
     pid: child.pid,
     cancel: () => {
+      // Idempotent: a second call (or one after the process exited) must not
+      // re-signal or leave a pending SIGKILL timer behind.
+      if (canceled || child.exitCode !== null || child.signalCode !== null) return
       canceled = true
       child.kill('SIGTERM')
       killTimer = setTimeout(() => child.kill('SIGKILL'), 5000)

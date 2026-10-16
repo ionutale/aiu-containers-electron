@@ -2,10 +2,16 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { findContainerBinary, getCliVersion, isVersionAtLeast, runCli, streamCli } from '../../src/main/container-cli/cli'
+import {
+  findContainerBinary,
+  getCliVersion,
+  isVersionAtLeast,
+  runCli,
+  streamCli
+} from '../../src/main/container-cli/cli'
 import { makeFakeCli } from '../helpers/fakeCli'
 
-const tmp = () => mkdtempSync(join(tmpdir(), 'cli-'))
+const tmp = (): string => mkdtempSync(join(tmpdir(), 'cli-'))
 
 describe('findContainerBinary', () => {
   it('finds the fake container through PATH', () => {
@@ -24,7 +30,9 @@ describe('findContainerBinary', () => {
   })
 
   it('ignores a non-executable CONTAINER_BIN so it surfaces as CLI_MISSING', () => {
-    expect(findContainerBinary({ PATH: '/nonexistent', CONTAINER_BIN: '/nonexistent/container' })).toBeNull()
+    expect(
+      findContainerBinary({ PATH: '/nonexistent', CONTAINER_BIN: '/nonexistent/container' })
+    ).toBeNull()
   })
 })
 
@@ -53,7 +61,9 @@ describe('streamCli', () => {
   it('delivers lines in order, then a done result', async () => {
     const fake = makeFakeCli(tmp())
     const lines: string[] = []
-    const handle = streamCli(['build', '-t', 'x:latest', '.'], { env: fake.env }, (_stream, line) => lines.push(line))
+    const handle = streamCli(['build', '-t', 'x:latest', '.'], { env: fake.env }, (_stream, line) =>
+      lines.push(line)
+    )
     const result = await handle.done
     expect(result.code).toBe(0)
     expect(lines).toContain('fake: done')

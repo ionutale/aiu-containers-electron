@@ -1,5 +1,3 @@
-import type { BuildRequest } from '../../../shared/types'
-
 export function defaultTagFor(dir: string): string {
   const base = dir.replace(/\/+$/, '').split('/').pop() ?? ''
   const sanitized = base
@@ -11,7 +9,10 @@ export function defaultTagFor(dir: string): string {
   return sanitized || 'image'
 }
 
-export function parseBuildArgs(text: string): { args: { key: string; value: string }[]; errors: string[] } {
+export function parseBuildArgs(text: string): {
+  args: { key: string; value: string }[]
+  errors: string[]
+} {
   const args: { key: string; value: string }[] = []
   const errors: string[] = []
   for (const rawLine of text.split('\n')) {
@@ -33,8 +34,4 @@ export function formatElapsed(ms: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m}m ${s}s`
-}
-
-export function buildRequestPreview(req: BuildRequest): string {
-  return ['container build', '-t', req.tag, '...', req.contextDir].join(' ')
 }

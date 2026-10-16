@@ -2,7 +2,8 @@ import { chmodSync, copyFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export type FakeMode = 'default' | 'service-down' | 'bad-json' | 'slow-build' | 'blocking-build' | 'failing-build'
+export type FakeMode =
+  'default' | 'service-down' | 'bad-json' | 'slow-build' | 'blocking-build' | 'failing-build'
 
 const FAKE_SOURCE = fileURLToPath(new URL('../fake-container/container', import.meta.url))
 

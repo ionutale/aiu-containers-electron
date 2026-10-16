@@ -22,7 +22,15 @@ function stubApi(over: Partial<ContainersApi> = {}): ContainersApi {
     }),
     systemStatus: vi.fn().mockResolvedValue({
       ok: true,
-      status: { status: 'running', clientVersion: '', serverVersion: '', hostArch: '', hostOs: '', containersTotal: 1, containersRunning: 1 }
+      status: {
+        status: 'running',
+        clientVersion: '',
+        serverVersion: '',
+        hostArch: '',
+        hostOs: '',
+        containersTotal: 1,
+        containersRunning: 1
+      }
     }),
     systemStart: vi.fn(),
     buildStart: vi.fn(),
@@ -67,14 +75,28 @@ describe('Containers screen', () => {
     const api = stubApi({
       list: vi
         .fn()
-        .mockResolvedValueOnce({ ok: false, error: { code: 'SERVICE_NOT_RUNNING', message: 'The container service is not running.' } })
+        .mockResolvedValueOnce({
+          ok: false,
+          error: { code: 'SERVICE_NOT_RUNNING', message: 'The container service is not running.' }
+        })
         .mockResolvedValue({ ok: true, containers: [] }),
       systemStatus: vi
         .fn()
-        .mockResolvedValueOnce({ ok: false, error: { code: 'SERVICE_NOT_RUNNING', message: 'The container service is not running.' } })
+        .mockResolvedValueOnce({
+          ok: false,
+          error: { code: 'SERVICE_NOT_RUNNING', message: 'The container service is not running.' }
+        })
         .mockResolvedValue({
           ok: true,
-          status: { status: 'running', clientVersion: '', serverVersion: '', hostArch: '', hostOs: '', containersTotal: 0, containersRunning: 0 }
+          status: {
+            status: 'running',
+            clientVersion: '',
+            serverVersion: '',
+            hostArch: '',
+            hostOs: '',
+            containersTotal: 0,
+            containersRunning: 0
+          }
         }),
       systemStart: vi.fn().mockResolvedValue({ ok: true })
     } as Partial<ContainersApi>)
@@ -92,7 +114,7 @@ describe('Containers screen', () => {
     const api = stubApi({
       list: vi.fn().mockResolvedValue({
         ok: false,
-        error: { code: 'CLI_MISSING', message: "The `container` CLI was not found." }
+        error: { code: 'CLI_MISSING', message: 'The `container` CLI was not found.' }
       })
     } as Partial<ContainersApi>)
     ;(window as unknown as { containers: ContainersApi }).containers = api

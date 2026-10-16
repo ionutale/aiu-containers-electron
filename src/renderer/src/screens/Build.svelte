@@ -2,7 +2,12 @@
   import { onMount } from 'svelte'
   import { getApi } from '../lib/api'
   import { defaultTagFor, formatElapsed, parseBuildArgs } from '../lib/format'
-  import type { BuildDoneEvent, BuildOutputEvent, BuildRequest, CliErrorInfo } from '../../../shared/types'
+  import type {
+    BuildDoneEvent,
+    BuildOutputEvent,
+    BuildRequest,
+    CliErrorInfo
+  } from '../../../shared/types'
 
   let contextDir = $state('')
   let dockerfilePath = $state('')
@@ -16,25 +21,36 @@
   let error = $state<CliErrorInfo | null>(null)
 
   let runId = $state<string | null>(null)
+  let building = $state(false)
   let lines = $state<{ kind: 'stdout' | 'stderr' | 'error'; text: string }[]>([])
   let starting = $state(false)
-  let result = $state<{ status: 'succeeded' | 'failed' | 'canceled'; code: number | null; message?: string } | null>(null)
+  let result = $state<{
+    status: 'succeeded' | 'failed' | 'canceled'
+    code: number | null
+    message?: string
+  } | null>(null)
+  let builtTag = $state('')
   let startedAt = $state(0)
   let elapsed = $state('')
   let logEl = $state<HTMLDivElement | null>(null)
   let autoScroll = $state(true)
   let elapsedTimer: number | undefined
 
+  function failureMessage(e: unknown): string {
+    return e instanceof Error ? e.message : String(e)
+  }
+
   onMount(() => {
     const api = getApi()
     const offOutput = api.onBuildOutput((e: BuildOutputEvent) => {
-      if (runId && e.runId !== runId) return
+      // Only the run this screen started may write to its log.
+      if (e.runId !== runId) return
       lines = [...lines, { kind: e.stream, text: e.line }]
       if (autoScroll && logEl) queueMicrotask(() => logEl?.scrollTo({ top: logEl.scrollHeight }))
     })
     const offDone = api.onBuildDone((e: BuildDoneEvent) => {
-      if (runId && e.runId !== runId) return
-      runId = null
+      if (e.runId !== runId) return
+      building = false
       if (elapsedTimer) window.clearInterval(elapsedTimer)
       elapsed = formatElapsed(Date.now() - startedAt)
       if (e.canceled) result = { status: 'canceled', code: e.code }
@@ -49,20 +65,28 @@
   })
 
   async function chooseContext(): Promise<void> {
-    const dir = await getApi().pickDirectory(contextDir || undefined)
-    if (!dir) return
-    contextDir = dir
-    tag = tag || defaultTagFor(dir)
-    const { dockerfile } = await getApi().contextInspect(dir)
-    dockerfilePath = dockerfile ?? ''
-    dockerfileMissing = dockerfile === null
+    try {
+      const dir = await getApi().pickDirectory(contextDir || undefined)
+      if (!dir) return
+      contextDir = dir
+      tag = tag || defaultTagFor(dir)
+      const { dockerfile } = await getApi().contextInspect(dir)
+      dockerfilePath = dockerfile ?? ''
+      dockerfileMissing = dockerfile === null
+    } catch (e) {
+      error = { code: 'UNKNOWN', message: failureMessage(e) }
+    }
   }
 
   async function chooseDockerfile(): Promise<void> {
-    const file = await getApi().pickFile(contextDir || undefined)
-    if (file) {
-      dockerfilePath = file
-      dockerfileMissing = false
+    try {
+      const file = await getApi().pickFile(contextDir || undefined)
+      if (file) {
+        dockerfilePath = file
+        dockerfileMissing = false
+      }
+    } catch (e) {
+      error = { code: 'UNKNOWN', message: failureMessage(e) }
     }
   }
 
@@ -92,24 +116,39 @@
         return
       }
       runId = started.runId
+      builtTag = req.tag
+      autoScroll = true
+      building = true
       startedAt = Date.now()
       elapsed = '0.0s'
       elapsedTimer = window.setInterval(() => {
         elapsed = formatElapsed(Date.now() - startedAt)
       }, 500)
+    } catch (e) {
+      error = { code: 'UNKNOWN', message: failureMessage(e) }
     } finally {
       starting = false
     }
   }
 
   async function cancel(): Promise<void> {
-    if (runId) await getApi().buildCancel(runId)
+    if (!runId) return
+    try {
+      await getApi().buildCancel(runId)
+    } catch (e) {
+      error = { code: 'UNKNOWN', message: failureMessage(e) }
+    }
   }
 </script>
 
 <section class="screen">
   <header><h1>Build</h1></header>
-  <form onsubmit={(e) => { e.preventDefault(); void start() }}>
+  <form
+    onsubmit={(e) => {
+      e.preventDefault()
+      void start()
+    }}
+  >
     <div class="row">
       <label for="context">Context directory</label>
       <input id="context" readonly value={contextDir} placeholder="Choose a folder…" />
@@ -121,7 +160,9 @@
       <button type="button" onclick={chooseDockerfile}>Browse…</button>
     </div>
     {#if dockerfileMissing && dockerfilePath === ''}
-      <p class="muted">No Dockerfile or Containerfile found in this folder — choose one, or the build will fail.</p>
+      <p class="muted">
+        No Dockerfile or Containerfile found in this folder — choose one, or the build will fail.
+      </p>
     {/if}
     <div class="row">
       <label for="tag">Tag</label>
@@ -134,7 +175,8 @@
     {#if showAdvanced}
       <div class="row">
         <label for="args">Build args</label>
-        <textarea id="args" bind:value={buildArgsText} placeholder="one KEY=VALUE per line"></textarea>
+        <textarea id="args" bind:value={buildArgsText} placeholder="one KEY=VALUE per line"
+        ></textarea>
       </div>
       <div class="row">
         <label for="target">Target stage</label>
@@ -155,7 +197,7 @@
       <p class="error">{error.message}</p>
     {/if}
 
-    <button type="submit" disabled={starting || runId !== null || !contextDir || !tag.trim()}>
+    <button type="submit" disabled={starting || building || !contextDir || !tag.trim()}>
       {starting ? 'Starting…' : 'Build'}
     </button>
   </form>
@@ -164,15 +206,15 @@
     <div class="build-log">
       <div class="log-head">
         <span>
-          {#if runId}Building… {elapsed}
-          {:else if result?.status === 'succeeded'}Succeeded · exit {result.code} · {elapsed} · {tag}
+          {#if building}Building… {elapsed}
+          {:else if result?.status === 'succeeded'}Succeeded · exit {result.code} · {elapsed} · {builtTag}
           {:else if result?.status === 'failed'}Failed · exit {result.code} · {elapsed}
           {:else if result?.status === 'canceled'}Canceled · {elapsed}
           {/if}
         </span>
         <span class="log-actions">
           <button type="button" onclick={() => (lines = [])}>Clear</button>
-          {#if runId}<button type="button" onclick={cancel}>Cancel</button>{/if}
+          {#if building}<button type="button" onclick={cancel}>Cancel</button>{/if}
         </span>
       </div>
       {#if result?.status === 'failed' && result.message}

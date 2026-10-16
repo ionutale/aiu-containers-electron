@@ -34,8 +34,10 @@ export interface CliErrorInfo {
   stderr?: string
 }
 
-export type ListResult = { ok: true; containers: ContainerSummary[] } | { ok: false; error: CliErrorInfo }
-export type SystemStatusResult = { ok: true; status: SystemStatus } | { ok: false; error: CliErrorInfo }
+export type ListResult =
+  { ok: true; containers: ContainerSummary[] } | { ok: false; error: CliErrorInfo }
+export type SystemStatusResult =
+  { ok: true; status: SystemStatus } | { ok: false; error: CliErrorInfo }
 export type ActionResult = { ok: true } | { ok: false; error: CliErrorInfo }
 
 export interface BuildRequest {

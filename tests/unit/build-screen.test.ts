@@ -9,7 +9,15 @@ function stubApi(over: Partial<ContainersApi> = {}): ContainersApi {
     list: vi.fn(),
     systemStatus: vi.fn().mockResolvedValue({
       ok: true,
-      status: { status: 'running', clientVersion: '', serverVersion: '', hostArch: '', hostOs: '', containersTotal: 1, containersRunning: 1 }
+      status: {
+        status: 'running',
+        clientVersion: '',
+        serverVersion: '',
+        hostArch: '',
+        hostOs: '',
+        containersTotal: 1,
+        containersRunning: 1
+      }
     }),
     systemStart: vi.fn(),
     buildStart: vi.fn().mockResolvedValue({ ok: true, runId: 'r1' }),
@@ -23,7 +31,11 @@ function stubApi(over: Partial<ContainersApi> = {}): ContainersApi {
   } as ContainersApi
 }
 
-function eventApi(): { api: ContainersApi; emit: (e: unknown) => void; done: (e: unknown) => void } {
+function eventApi(): {
+  api: ContainersApi
+  emit: (e: unknown) => void
+  done: (e: unknown) => void
+} {
   let outputCb: ((e: unknown) => void) | null = null
   let doneCb: ((e: unknown) => void) | null = null
   const api = stubApi({
@@ -47,17 +59,23 @@ describe('Build screen', () => {
     ;(window as unknown as { containers: ContainersApi }).containers = api
     render(Build)
     await fireEvent.click(screen.getByRole('button', { name: /choose/i }))
-    await waitFor(() => expect(screen.getByDisplayValue('/Users/me/projects/My App')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('/Users/me/projects/My App')).toBeInTheDocument()
+    )
     expect(api.contextInspect).toHaveBeenCalledWith('/Users/me/projects/My App')
     expect(screen.getByDisplayValue('my-app')).toBeInTheDocument()
   })
 
   it('hints when the context has no Dockerfile or Containerfile', async () => {
-    const api = stubApi({ contextInspect: vi.fn().mockResolvedValue({ dockerfile: null }) } as Partial<ContainersApi>)
+    const api = stubApi({
+      contextInspect: vi.fn().mockResolvedValue({ dockerfile: null })
+    } as Partial<ContainersApi>)
     ;(window as unknown as { containers: ContainersApi }).containers = api
     render(Build)
     await fireEvent.click(screen.getByRole('button', { name: /choose/i }))
-    await waitFor(() => expect(screen.getByText(/no dockerfile or containerfile/i)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText(/no dockerfile or containerfile/i)).toBeInTheDocument()
+    )
   })
 
   it('clears the missing-Dockerfile hint once a file is provided', async () => {
@@ -68,7 +86,9 @@ describe('Build screen', () => {
     ;(window as unknown as { containers: ContainersApi }).containers = api
     render(Build)
     await fireEvent.click(screen.getByRole('button', { name: /choose/i }))
-    await waitFor(() => expect(screen.getByText(/no dockerfile or containerfile/i)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText(/no dockerfile or containerfile/i)).toBeInTheDocument()
+    )
 
     await fireEvent.click(screen.getByRole('button', { name: /browse/i }))
     await waitFor(() => expect(screen.getByDisplayValue('/ctx/Dockerfile.dev')).toBeInTheDocument())
@@ -76,14 +96,22 @@ describe('Build screen', () => {
   })
 
   it('clears the missing-Dockerfile hint when a path is typed in', async () => {
-    const api = stubApi({ contextInspect: vi.fn().mockResolvedValue({ dockerfile: null }) } as Partial<ContainersApi>)
+    const api = stubApi({
+      contextInspect: vi.fn().mockResolvedValue({ dockerfile: null })
+    } as Partial<ContainersApi>)
     ;(window as unknown as { containers: ContainersApi }).containers = api
     render(Build)
     await fireEvent.click(screen.getByRole('button', { name: /choose/i }))
-    await waitFor(() => expect(screen.getByText(/no dockerfile or containerfile/i)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText(/no dockerfile or containerfile/i)).toBeInTheDocument()
+    )
 
-    await fireEvent.input(screen.getByLabelText('Dockerfile'), { target: { value: 'Dockerfile.dev' } })
-    await waitFor(() => expect(screen.queryByText(/no dockerfile or containerfile/i)).not.toBeInTheDocument())
+    await fireEvent.input(screen.getByLabelText('Dockerfile'), {
+      target: { value: 'Dockerfile.dev' }
+    })
+    await waitFor(() =>
+      expect(screen.queryByText(/no dockerfile or containerfile/i)).not.toBeInTheDocument()
+    )
   })
 
   it('starts a build with the form values', async () => {
@@ -95,7 +123,11 @@ describe('Build screen', () => {
     await fireEvent.click(screen.getByRole('button', { name: /^build$/i }))
     await waitFor(() =>
       expect(api.buildStart).toHaveBeenCalledWith(
-        expect.objectContaining({ contextDir: '/Users/me/projects/My App', tag: 'my-app', noCache: false })
+        expect.objectContaining({
+          contextDir: '/Users/me/projects/My App',
+          tag: 'my-app',
+          noCache: false
+        })
       )
     )
   })
@@ -140,7 +172,13 @@ describe('Build screen', () => {
     await fireEvent.click(screen.getByRole('button', { name: /choose/i }))
     await waitFor(() => expect(screen.getByDisplayValue('my-app')).toBeInTheDocument())
     await fireEvent.click(screen.getByRole('button', { name: /^build$/i }))
-    done({ runId: 'r1', code: 1, signal: null, canceled: false, error: { code: 'BUILD_FAILED', message: 'step failed' } })
+    done({
+      runId: 'r1',
+      code: 1,
+      signal: null,
+      canceled: false,
+      error: { code: 'BUILD_FAILED', message: 'step failed' }
+    })
     await waitFor(() => expect(screen.getByText(/step failed/i)).toBeInTheDocument())
   })
 })

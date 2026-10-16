@@ -1,0 +1,13 @@
+{
+  "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
+  "include": ["tests/**/*", "src/**/*", "e2e/**/*", "scripts/**/*.mjs"],
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "strict": false,
+    "allowJs": true,
+    "checkJs": false,
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["node", "electron-vite/node"]
+  }
+}

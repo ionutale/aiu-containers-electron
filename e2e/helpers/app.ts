@@ -1,4 +1,9 @@
-import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import {
+  _electron as electron,
+  type ElectronApplication,
+  type Locator,
+  type Page
+} from '@playwright/test'
 import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -10,12 +15,7 @@ const MAIN = join(__dirname, '..', '..', 'out', 'main', 'index.js')
 const FAKE_SOURCE = join(__dirname, '..', '..', 'tests', 'fake-container', 'container')
 
 export type FakeMode =
-  | 'default'
-  | 'service-down'
-  | 'bad-json'
-  | 'slow-build'
-  | 'blocking-build'
-  | 'failing-build'
+  'default' | 'service-down' | 'bad-json' | 'slow-build' | 'blocking-build' | 'failing-build'
 
 export interface FakeCli {
   binDir: string
@@ -129,7 +129,7 @@ export async function openBuild(window: Page): Promise<void> {
 }
 
 /** The form's submit button (the sidebar also has a "Build" button). */
-export function buildButton(window: Page) {
+export function buildButton(window: Page): Locator {
   return window.locator('form').getByRole('button', { name: /^build$/i })
 }
 

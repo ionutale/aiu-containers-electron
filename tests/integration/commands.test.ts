@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { listContainers, startSystem, systemStatus } from '../../src/main/container-cli/commands'
 import { makeFakeCli } from '../helpers/fakeCli'
 
-const tmp = () => mkdtempSync(join(tmpdir(), 'cmds-'))
+const tmp = (): string => mkdtempSync(join(tmpdir(), 'cmds-'))
 
 describe('listContainers', () => {
   it('returns running containers by default', async () => {

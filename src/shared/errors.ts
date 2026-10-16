@@ -16,7 +16,8 @@ export function classifyCliFailure(input: {
   if (input.spawnError?.code === 'ENOENT') {
     return {
       code: 'CLI_MISSING',
-      message: "The `container` CLI was not found. Install Apple's container runtime, then restart the app.",
+      message:
+        "The `container` CLI was not found. Install Apple's container runtime, then restart the app.",
       stderr
     }
   }
