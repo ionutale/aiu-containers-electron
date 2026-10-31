@@ -142,83 +142,141 @@
 </script>
 
 <section class="screen">
-  <header><h1>Build</h1></header>
+  <header>
+    <div class="title">
+      <h1>Build</h1>
+      <p>Build an image from a Dockerfile in a local context.</p>
+    </div>
+  </header>
+
   <form
+    class="card form-card"
     onsubmit={(e) => {
       e.preventDefault()
       void start()
     }}
   >
-    <div class="row">
-      <label for="context">Context directory</label>
-      <input id="context" readonly value={contextDir} placeholder="Choose a folder…" />
-      <button type="button" onclick={chooseContext}>Choose…</button>
-    </div>
-    <div class="row">
-      <label for="dockerfile">Dockerfile</label>
-      <input id="dockerfile" bind:value={dockerfilePath} placeholder="Dockerfile" />
-      <button type="button" onclick={chooseDockerfile}>Browse…</button>
-    </div>
-    {#if dockerfileMissing && dockerfilePath === ''}
-      <p class="muted">
-        No Dockerfile or Containerfile found in this folder — choose one, or the build will fail.
-      </p>
-    {/if}
-    <div class="row">
-      <label for="tag">Tag</label>
-      <input id="tag" bind:value={tag} placeholder="my-app" />
+    <div class="field">
+      <label for="context">Context</label>
+      <div class="control">
+        <input id="context" readonly value={contextDir} placeholder="Choose a folder…" />
+        <button type="button" class="btn" onclick={chooseContext}>Choose…</button>
+      </div>
     </div>
 
-    <button type="button" class="disclosure" onclick={() => (showAdvanced = !showAdvanced)}>
-      {showAdvanced ? '▾' : '▸'} Advanced
-    </button>
-    {#if showAdvanced}
-      <div class="row">
-        <label for="args">Build args</label>
-        <textarea id="args" bind:value={buildArgsText} placeholder="one KEY=VALUE per line"
-        ></textarea>
+    <div class="field">
+      <label for="dockerfile">Dockerfile</label>
+      <div class="control">
+        <input id="dockerfile" bind:value={dockerfilePath} placeholder="Dockerfile" />
+        <button type="button" class="btn" onclick={chooseDockerfile}>Browse…</button>
       </div>
-      <div class="row">
-        <label for="target">Target stage</label>
-        <input id="target" bind:value={target} />
-      </div>
-      <div class="row">
-        <label for="platform">Platform</label>
-        <select id="platform" bind:value={platform}>
-          <option value="">Builder default</option>
-          <option value="linux/arm64">linux/arm64</option>
-          <option value="linux/amd64">linux/amd64</option>
-        </select>
-      </div>
-      <label class="check"><input type="checkbox" bind:checked={noCache} /> No cache</label>
-    {/if}
+      {#if dockerfileMissing && dockerfilePath === ''}
+        <p class="hint">
+          No Dockerfile or Containerfile found in this folder — choose one, or the build will fail.
+        </p>
+      {/if}
+    </div>
+
+    <div class="field">
+      <label for="tag">Tag</label>
+      <input id="tag" bind:value={tag} placeholder="my-app" />
+      <p class="hint">
+        Defaults to the context folder name. Lowercase letters, digits, and . - _ / : are allowed.
+      </p>
+    </div>
+
+    <div class="advanced">
+      <button
+        type="button"
+        class="disclosure"
+        aria-expanded={showAdvanced}
+        onclick={() => (showAdvanced = !showAdvanced)}
+      >
+        <svg class="chev" width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path
+            d="m4.5 2.5 4 3.5-4 3.5"
+            stroke="currentColor"
+            stroke-width="1.4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <span>Advanced</span>
+        <span class="adv-summary">build args · target · platform · cache</span>
+      </button>
+      {#if showAdvanced}
+        <div class="advanced-body">
+          <div class="field">
+            <label for="args">Build args</label>
+            <textarea id="args" bind:value={buildArgsText} placeholder="one KEY=VALUE per line"
+            ></textarea>
+          </div>
+          <div class="field">
+            <label for="target">Target stage</label>
+            <input id="target" bind:value={target} placeholder="optional" />
+          </div>
+          <div class="field">
+            <label for="platform">Platform</label>
+            <select id="platform" bind:value={platform}>
+              <option value="">Builder default</option>
+              <option value="linux/arm64">linux/arm64</option>
+              <option value="linux/amd64">linux/amd64</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="no-cache">Cache</label>
+            <label class="switch">
+              <input id="no-cache" type="checkbox" bind:checked={noCache} />
+              <span>No cache</span>
+            </label>
+          </div>
+        </div>
+      {/if}
+    </div>
 
     {#if error}
       <p class="error">{error.message}</p>
     {/if}
 
-    <button type="submit" disabled={starting || building || !contextDir || !tag.trim()}>
-      {starting ? 'Starting…' : 'Build'}
-    </button>
+    <div class="form-footer">
+      <p class="hint">
+        {#if !contextDir}Choose a context folder to enable building.{:else if !tag.trim()}Add a tag
+          to enable building.{:else}Builds run in the background; output streams below.{/if}
+      </p>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        disabled={starting || building || !contextDir || !tag.trim()}
+      >
+        {starting ? 'Starting…' : 'Build'}
+      </button>
+    </div>
   </form>
 
   {#if runId || lines.length > 0 || result}
     <div class="build-log">
       <div class="log-head">
-        <span>
-          {#if building}Building… {elapsed}
-          {:else if result?.status === 'succeeded'}Succeeded · exit {result.code} · {elapsed} · {builtTag}
-          {:else if result?.status === 'failed'}Failed · exit {result.code} · {elapsed}
-          {:else if result?.status === 'canceled'}Canceled · {elapsed}
+        <span class="log-status" data-state={building ? 'building' : result?.status}>
+          <span class="dot"></span>
+          {#if building}
+            <strong>Building</strong><span>{elapsed}</span>
+          {:else if result?.status === 'succeeded'}
+            <strong>Succeeded · exit {result.code}</strong><span>{elapsed} · {builtTag}</span>
+          {:else if result?.status === 'failed'}
+            <strong>Failed · exit {result.code}</strong><span>{elapsed}</span>
+          {:else if result?.status === 'canceled'}
+            <strong>Canceled</strong><span>{elapsed}</span>
           {/if}
         </span>
         <span class="log-actions">
-          <button type="button" onclick={() => (lines = [])}>Clear</button>
-          {#if building}<button type="button" onclick={cancel}>Cancel</button>{/if}
+          <button type="button" class="btn btn-ghost" onclick={() => (lines = [])}>Clear</button>
+          {#if building}
+            <button type="button" class="btn btn-ghost" onclick={cancel}>Cancel</button>
+          {/if}
         </span>
       </div>
       {#if result?.status === 'failed' && result.message}
-        <p class="error">{result.message}</p>
+        <p class="error" style="margin: 8px 13px 0">{result.message}</p>
       {/if}
       <div
         class="log-body"

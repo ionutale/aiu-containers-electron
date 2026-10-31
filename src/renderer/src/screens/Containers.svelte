@@ -80,54 +80,87 @@
 
 <section class="screen">
   <header>
-    <h1>Containers</h1>
-    <span class="badge" class:bad={serviceState === 'not-running'}>{serviceLabel}</span>
-    <div class="controls">
-      <label
-        ><input type="checkbox" checked={!runningOnly} onchange={toggleRunningOnly} /> Show stopped</label
-      >
-      <button onclick={load} disabled={loading}>Refresh</button>
+    <div class="title">
+      <h1>Containers</h1>
+      <p>{runningOnly ? 'Running on this Mac.' : 'All containers, including stopped ones.'}</p>
+    </div>
+    <div class="actions">
+      <span class="pill" data-state={serviceState}>{serviceLabel}</span>
+      <label class="switch">
+        <input type="checkbox" checked={!runningOnly} onchange={toggleRunningOnly} />
+        <span>Show stopped</span>
+      </label>
+      <button class="btn" onclick={load} disabled={loading}>Refresh</button>
     </div>
   </header>
 
   {#if error?.code === 'SERVICE_NOT_RUNNING'}
-    <div class="banner">
-      <p>The container service is not running.</p>
-      <button onclick={startService} disabled={startingService}>
+    <div class="banner" data-kind="warning">
+      <p>The container service is not running. Start it to list containers.</p>
+      <button class="btn" onclick={startService} disabled={startingService}>
         {startingService ? 'Starting…' : 'Start service'}
       </button>
     </div>
   {:else if error?.code === 'CLI_MISSING'}
-    <div class="banner">
+    <div class="banner" data-kind="warning">
       <p>
         The `container` CLI was not found. Install Apple's container runtime, then restart this app.
       </p>
     </div>
   {:else if error}
-    <div class="banner">
+    <div class="banner" data-kind="error">
       <p>{error.message}</p>
       {#if error.stderr}<pre>{error.stderr}</pre>{/if}
     </div>
   {/if}
 
-  {#if !error && !loading && containers.length === 0}
-    <p class="muted">{runningOnly ? 'No running containers.' : 'No containers.'}</p>
-  {/if}
-
-  <table>
-    <thead>
-      <tr><th>ID</th><th>Image</th><th>State</th><th>Address</th><th>Platform</th></tr>
-    </thead>
-    <tbody>
-      {#each containers as c (c.id)}
-        <tr>
-          <td>{c.id}</td>
-          <td>{c.image}</td>
-          <td>{c.state}</td>
-          <td>{c.ip}</td>
-          <td>{c.platform}</td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
+  <div class="card">
+    {#if containers.length > 0}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Image</th><th>State</th><th>Address</th><th>Platform</th></tr>
+          </thead>
+          <tbody>
+            {#each containers as c (c.id)}
+              <tr>
+                <td class="id">{c.id}</td>
+                <td class="muted">{c.image}</td>
+                <td>
+                  <span class="chip" data-state={c.state}><span class="dot"></span>{c.state}</span>
+                </td>
+                <td class="dim">{c.ip || '—'}</td>
+                <td class="dim">{c.platform || '—'}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {:else if loading}
+      <div class="empty"><span>Loading containers…</span></div>
+    {:else if !error}
+      <div class="empty">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"
+            stroke="currentColor"
+            stroke-width="1.4"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M4.3 7.6 12 11.7l7.7-4.1M12 11.7V21"
+            stroke="currentColor"
+            stroke-width="1.4"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <strong>{runningOnly ? 'No running containers.' : 'No containers.'}</strong>
+        <span>
+          {runningOnly
+            ? 'Start one with `container run` and it will appear here.'
+            : 'Run a container, or toggle “Show stopped” off.'}
+        </span>
+      </div>
+    {/if}
+  </div>
 </section>
