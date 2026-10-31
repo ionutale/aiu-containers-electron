@@ -14,6 +14,12 @@ const SERVICE_DOWN_STDERR =
   'Error: internalError: "failed to list containers" (cause: "interrupted: "XPC connection error: Connection invalid"") ' +
   "Ensure container system service has been started with 'container system start'.\n"
 
+const SEEDED_IMAGES = [
+  'docker.io/library/nginx:latest',
+  'docker.io/library/postgres:16',
+  'docker.io/library/alpine:3.20'
+]
+
 const seededContainers = [
   {
     status: 'running',
@@ -105,16 +111,20 @@ const seededContainers = [
 ]
 
 function state() {
-  if (!STATE_PATH) return { extra: [] }
+  if (!STATE_PATH) return { extra: [], deleted: [], overrides: {} }
   try {
     return {
       extra: [],
       deleted: [],
       overrides: {},
+      networks: [],
+      volumes: [],
+      images: [],
+      logs: {},
       ...JSON.parse(readFileSync(STATE_PATH, 'utf8'))
     }
   } catch {
-    return { extra: [], deleted: [], overrides: {} }
+    return { extra: [], deleted: [], overrides: {}, networks: [], volumes: [], images: [], logs: {} }
   }
 }
 
@@ -130,8 +140,13 @@ function containers() {
     .filter((container) => !current.deleted?.includes(container.configuration.id))
 }
 
-function containerEntry(id, image, status, command = []) {
-  const network = { network: 'default', options: { hostname: id } }
+function containerEntry(id, image, status, command = [], options = {}) {
+  const networkName = options.network ?? 'default'
+  const aliases = options.aliases ?? []
+  const network = {
+    network: networkName,
+    options: { hostname: id, ...(aliases.length ? { aliases } : {}) }
+  }
   return {
     status,
     configuration: {
@@ -139,16 +154,16 @@ function containerEntry(id, image, status, command = []) {
       initProcess: {
         supplementalGroups: [],
         terminal: false,
-        workingDirectory: '/',
+        workingDirectory: options.workingDirectory ?? '/',
         user: { id: { uid: 0, gid: 0 } },
         arguments: command.slice(1),
-        environment: [],
+        environment: options.environment ?? [],
         rlimits: [],
         executable: command[0] ?? ''
       },
-      labels: {},
+      labels: options.labels ?? {},
       rosetta: false,
-      publishedPorts: [],
+      publishedPorts: options.publishedPorts ?? [],
       resources: { cpus: 2, memoryInBytes: 1073741824 },
       virtualization: false,
       id,
@@ -166,7 +181,7 @@ function containerEntry(id, image, status, command = []) {
         }
       },
       networks: [network],
-      mounts: [],
+      mounts: options.mounts ?? [],
       publishedSockets: [],
       useInit: false
     },
@@ -174,7 +189,7 @@ function containerEntry(id, image, status, command = []) {
       status === 'running'
         ? [
             {
-              network: 'default',
+              network: networkName,
               hostname: id,
               ipv4Address: '192.168.64.2/24',
               ipv4Gateway: '192.168.64.1'
@@ -192,8 +207,8 @@ function setStatus(container, status) {
       status === 'running'
         ? [
             {
-              network: 'default',
-              hostname: container.configuration.networks[0].options.hostname,
+              network: container.configuration.networks[0]?.network ?? 'default',
+              hostname: container.configuration.networks[0]?.options?.hostname ?? container.configuration.id,
               ipv4Address: '192.168.64.2/24',
               ipv4Gateway: '192.168.64.1'
             }
@@ -213,10 +228,170 @@ function serviceIsDown() {
   return MODE === 'service-down' && state().serviceStarted !== true
 }
 
+const BOOLEAN_FLAGS = new Set([
+  '-d',
+  '--detach',
+  '--rm',
+  '--remove',
+  '--init',
+  '--rosetta',
+  '--ssh',
+  '--virtualization',
+  '--read-only',
+  '--no-dns',
+  '-t',
+  '--tty',
+  '-i',
+  '--interactive',
+  '-a',
+  '--all',
+  '-f',
+  '--force',
+  '--follow',
+  '--quiet',
+  '-q',
+  '--verbose',
+  '--help'
+])
+
+const VALUE_FLAGS = new Set([
+  '-e',
+  '--env',
+  '--env-file',
+  '--name',
+  '--network',
+  '-p',
+  '--publish',
+  '--publish-socket',
+  '--volume',
+  '-v',
+  '--mount',
+  '--label',
+  '-l',
+  '-w',
+  '--workdir',
+  '--cwd',
+  '-u',
+  '--user',
+  '--uid',
+  '--gid',
+  '--entrypoint',
+  '--platform',
+  '--arch',
+  '--os',
+  '-c',
+  '--cpus',
+  '-m',
+  '--memory',
+  '--dns',
+  '--dns-domain',
+  '--dns-option',
+  '--dns-search',
+  '--tmpfs',
+  '--ulimit',
+  '--runtime',
+  '--kernel',
+  '--init-image',
+  '--scheme',
+  '--format',
+  '--progress',
+  '--max-concurrent-downloads',
+  '--cidfile',
+  '--signal',
+  '--time',
+  '-n',
+  '-t',
+  '--target',
+  '-f'
+])
+
+function parseArgs(rest, { valueFlags = VALUE_FLAGS, booleanFlags = BOOLEAN_FLAGS } = {}) {
+  const positionals = []
+  const flags = new Map()
+  const repeated = new Map()
+  for (let i = 0; i < rest.length; i++) {
+    const arg = rest[i]
+    if (valueFlags.has(arg)) {
+      const value = rest[i + 1] ?? ''
+      flags.set(arg, value)
+      const key = arg.replace(/^-+/, '')
+      repeated.set(key, [...(repeated.get(key) ?? []), value])
+      i++
+      continue
+    }
+    if (booleanFlags.has(arg)) {
+      flags.set(arg, true)
+      continue
+    }
+    if (arg.startsWith('-')) continue
+    positionals.push(arg)
+  }
+  return { positionals, flags, repeated }
+}
+
+function flagValue(flags, ...names) {
+  for (const name of names) if (flags.has(name)) return flags.get(name)
+  return undefined
+}
+
+function flagValues(repeated, ...names) {
+  const out = []
+  for (const name of names) out.push(...(repeated.get(name.replace(/^-+/, '')) ?? []))
+  return out
+}
+
+function jsonOut(value) {
+  process.stdout.write(JSON.stringify(value))
+}
+
+function nameOf(entry) {
+  return entry?.configuration?.name ?? entry?.id ?? ''
+}
+
+function networkNames() {
+  return state().networks ?? []
+}
+
+function volumeNames() {
+  return state().volumes ?? []
+}
+
+function imageNames() {
+  return [...SEEDED_IMAGES, ...(state().images ?? [])]
+}
+
+function parsePort(raw) {
+  const [spec, proto = 'tcp'] = raw.split('/')
+  const parts = spec.split(':')
+  const [hostAddress, hostPort, containerPort] =
+    parts.length === 3 ? parts : [undefined, parts[0], parts[1]]
+  return {
+    proto,
+    hostPort: Number(hostPort),
+    containerPort: Number(containerPort),
+    ...(hostAddress ? { hostAddress } : {})
+  }
+}
+
 async function main() {
   const sub = args[0] ?? ''
   const rest = args.slice(1)
 
+  if (sub === '--help' || sub === '-h') {
+    console.log('USAGE: container [--debug] <subcommand>')
+    return
+  }
+  if (rest.includes('--help') || rest.includes('-h')) {
+    if (sub === 'run') {
+      console.log(
+        'USAGE: container run [<options>] <image> [<arguments> ...]\n' +
+          '  --network <network>  Attach to a network (format: <name>[,mac=XX:XX:XX:XX:XX:XX])'
+      )
+    } else {
+      console.log(`USAGE: container ${sub} [<options>]`)
+    }
+    return
+  }
   if (sub === '--version') {
     console.log('container CLI version 0.10.0 (build: release, commit: fake)')
     return
@@ -227,10 +402,9 @@ async function main() {
       process.stdout.write('{"oops')
       return
     }
-    const all = rest.includes('--all')
-    process.stdout.write(
-      JSON.stringify(all ? containers() : containers().filter((c) => c.status === 'running'))
-    )
+    const parsed = parseArgs(rest)
+    const all = parsed.flags.has('--all')
+    jsonOut(all ? containers() : containers().filter((c) => c.status === 'running'))
     return
   }
   if (sub === 'system' && rest[0] === 'status') {
@@ -257,54 +431,194 @@ async function main() {
     console.log('Container services started')
     return
   }
+  if (sub === 'network') {
+    const action = rest[0]
+    if (action === 'create') {
+      if (serviceIsDown()) serviceDown()
+      const parsed = parseArgs(rest.slice(1))
+      const name = parsed.positionals.at(-1)
+      if (!name) {
+        process.stderr.write('network name is required\n')
+        process.exit(1)
+      }
+      const current = state()
+      current.networks ??= []
+      if (current.networks.includes(name)) {
+        process.stderr.write(`network ${name} already exists\n`)
+        process.exit(1)
+      }
+      current.networks.push(name)
+      save(current)
+      console.log(name)
+      return
+    }
+    if (action === 'list' || action === 'ls') {
+      jsonOut(networkNames().map((name) => ({ id: name, configuration: { name, labels: {} } })))
+      return
+    }
+    if (action === 'delete' || action === 'rm') {
+      const parsed = parseArgs(rest.slice(1))
+      const current = state()
+      current.networks = networkNames().filter((name) => !parsed.positionals.includes(name))
+      save(current)
+      return
+    }
+    if (action === 'inspect') {
+      const parsed = parseArgs(rest.slice(1))
+      const missing = parsed.positionals.filter((name) => !networkNames().includes(name))
+      if (missing.length) {
+        process.stderr.write(`network not found: ${missing.join(', ')}\n`)
+        process.exit(1)
+      }
+      jsonOut(parsed.positionals.map((name) => ({ id: name, configuration: { name } })))
+      return
+    }
+    process.stderr.write(`fake container: unhandled network command: ${rest.join(' ')}\n`)
+    process.exit(1)
+  }
+  if (sub === 'volume') {
+    const action = rest[0]
+    if (action === 'create') {
+      if (serviceIsDown()) serviceDown()
+      const parsed = parseArgs(rest.slice(1))
+      const name = parsed.positionals.at(-1)
+      if (!name) {
+        process.stderr.write('volume name is required\n')
+        process.exit(1)
+      }
+      const current = state()
+      current.volumes ??= []
+      if (current.volumes.includes(name)) {
+        process.stderr.write(`volume ${name} already exists\n`)
+        process.exit(1)
+      }
+      current.volumes.push(name)
+      save(current)
+      console.log(name)
+      return
+    }
+    if (action === 'list' || action === 'ls') {
+      jsonOut(volumeNames().map((name) => ({ id: name, configuration: { name, labels: {} } })))
+      return
+    }
+    if (action === 'delete' || action === 'rm') {
+      const parsed = parseArgs(rest.slice(1))
+      const current = state()
+      current.volumes = volumeNames().filter((name) => !parsed.positionals.includes(name))
+      save(current)
+      return
+    }
+    process.stderr.write(`fake container: unhandled volume command: ${rest.join(' ')}\n`)
+    process.exit(1)
+  }
+  if (sub === 'image') {
+    const action = rest[0]
+    if (action === 'list' || action === 'ls') {
+      jsonOut(imageNames().map((name) => ({ id: name, configuration: { name } })))
+      return
+    }
+    if (action === 'inspect') {
+      const parsed = parseArgs(rest.slice(1))
+      const missing = parsed.positionals.filter((name) => !imageNames().includes(name))
+      if (missing.length) {
+        process.stderr.write(`image not found: ${missing.join(', ')}\n`)
+        process.exit(1)
+      }
+      jsonOut(parsed.positionals.map((name) => ({ id: name, configuration: { name } })))
+      return
+    }
+    if (action === 'delete' || action === 'rm' || action === 'prune') {
+      return
+    }
+    process.stderr.write(`fake container: unhandled image command: ${rest.join(' ')}\n`)
+    process.exit(1)
+  }
   if (sub === 'run' || sub === 'create') {
-    const nameIndex = rest.indexOf('--name')
-    const id = nameIndex >= 0 ? rest[nameIndex + 1] : undefined
-    const positional = rest.filter(
-      (arg, index) =>
-        arg !== '-d' &&
-        !(nameIndex >= 0 && (index === nameIndex || index === nameIndex + 1)) &&
-        !arg.startsWith('-')
+    if (serviceIsDown()) serviceDown()
+    const parsed = parseArgs(rest)
+    const id = flagValue(parsed.flags, '--name') ?? parsed.positionals[0]?.split('/').pop()?.split(':')[0]
+    const image = parsed.positionals[0] ?? 'docker.io/library/alpine:3.20'
+    const command = parsed.positionals.slice(1)
+    const networkValue = flagValue(parsed.flags, '--network') ?? 'default'
+    const [networkName, ...networkOpts] = String(networkValue).split(',')
+    const aliases = networkOpts
+      .filter((opt) => opt.startsWith('alias='))
+      .map((opt) => opt.slice('alias='.length))
+    const labels = Object.fromEntries(
+      flagValues(parsed.repeated, '--label', '-l')
+        .filter((label) => label.includes('='))
+        .map((label) => [label.slice(0, label.indexOf('=')), label.slice(label.indexOf('=') + 1)])
     )
-    const image = positional[0] ?? 'docker.io/library/alpine:3.20'
-    const containerId = id ?? image.split('/').pop().split(':')[0]
-    const command = positional.slice(1)
-    const created = containerEntry(
-      containerId,
-      image,
-      sub === 'run' ? 'running' : 'stopped',
-      command
-    )
+    const environment = flagValues(parsed.repeated, '-e', '--env')
+    const publishedPorts = flagValues(parsed.repeated, '-p', '--publish').map(parsePort)
+    const mounts = flagValues(parsed.repeated, '--volume').map((mount) => {
+      const [source, target, options] = mount.split(':')
+      return { source, target, readOnly: options === 'ro' }
+    })
+    const workingDirectory = flagValue(parsed.flags, '-w', '--workdir', '--cwd')
+    const entrypoint = flagValue(parsed.flags, '--entrypoint')
+    const argv = entrypoint ? [entrypoint, ...command] : command
+    const created = containerEntry(id, image, sub === 'run' ? 'running' : 'stopped', argv, {
+      network: networkName,
+      aliases,
+      labels,
+      environment,
+      publishedPorts,
+      mounts,
+      ...(workingDirectory ? { workingDirectory } : {})
+    })
     const current = state()
-    current.extra = (current.extra ?? []).filter(
-      (container) => container.configuration.id !== containerId
-    )
+    current.extra = (current.extra ?? []).filter((container) => container.configuration.id !== id)
     current.extra.push(created)
-    current.deleted = (current.deleted ?? []).filter((deletedId) => deletedId !== containerId)
-    if (current.overrides) delete current.overrides[containerId]
+    current.deleted = (current.deleted ?? []).filter((deletedId) => deletedId !== id)
+    if (current.overrides) delete current.overrides[id]
+    current.images ??= []
+    if (!current.images.includes(image)) current.images.push(image)
+    current.logs ??= {}
+    current.logs[id] = [`[${id}] listening`, `[${id}] ready`]
     save(current)
-    console.log(containerId)
+    console.log(id)
     return
   }
   if (sub === 'start' || sub === 'stop') {
-    const id = rest[0]
+    const parsed = parseArgs(rest)
+    const ids = parsed.flags.has('--all')
+      ? containers().map((container) => container.configuration.id)
+      : parsed.positionals
     const current = state()
-    const container = containers().find((item) => item.configuration.id === id)
-    if (container) {
-      current.overrides ??= {}
-      current.overrides[id] = setStatus(container, sub === 'start' ? 'running' : 'stopped')
-      current.deleted = (current.deleted ?? []).filter((deletedId) => deletedId !== id)
-      save(current)
+    current.overrides ??= {}
+    for (const id of ids) {
+      const container = containers().find((item) => item.configuration.id === id)
+      if (container) {
+        current.overrides[id] = setStatus(container, sub === 'start' ? 'running' : 'stopped')
+        current.deleted = (current.deleted ?? []).filter((deletedId) => deletedId !== id)
+      }
     }
+    save(current)
     return
   }
   if (sub === 'delete' || sub === 'rm') {
+    const parsed = parseArgs(rest)
     const current = state()
     current.deleted ??= []
-    for (const id of rest) {
+    const ids = parsed.flags.has('--all')
+      ? containers().map((container) => container.configuration.id)
+      : parsed.positionals
+    for (const id of ids) {
       if (!current.deleted.includes(id)) current.deleted.push(id)
     }
+    current.extra = (current.extra ?? []).filter(
+      (container) => !parsed.positionals.includes(container.configuration.id)
+    )
     save(current)
+    return
+  }
+  if (sub === 'logs') {
+    const follow = rest.includes('-f') || rest.includes('--follow')
+    const id = rest.find((arg, index) => !arg.startsWith('-') && rest[index - 1] !== '-n')
+    const lines = state().logs?.[id] ?? [`[${id}] log line`]
+    for (const line of lines) console.log(line)
+    if (follow) await sleep(600_000)
     return
   }
   if (sub === 'prune') {
@@ -331,11 +645,12 @@ async function main() {
     return
   }
   if (sub === 'build') {
+    if (serviceIsDown()) serviceDown()
+    const parsed = parseArgs(rest)
     // Mirror the real CLI: a relative -f is resolved against the process cwd,
     // not the build context, so an unresolved relative path must fail here.
-    const fIndex = rest.indexOf('-f')
-    if (fIndex >= 0) {
-      const dockerfile = rest[fIndex + 1]
+    const dockerfile = flagValue(parsed.flags, '-f')
+    if (dockerfile !== undefined) {
       if (!dockerfile || !existsSync(resolve(process.cwd(), dockerfile))) {
         process.stderr.write(`dockerfile does not exist ${dockerfile ?? ''}\n`)
         process.exit(1)
@@ -349,20 +664,28 @@ async function main() {
       console.log('#1 [internal] load build definition')
       await sleep(600_000)
       return
-    }    const steps = [
+    }
+    const steps = [
       '#1 [internal] load build definition from Dockerfile',
       '#2 [1/2] FROM alpine:3.20',
       '#3 [2/2] RUN echo hello',
       '#4 exporting layers',
       'DONE 0.2s'
     ]
-    for (const s of steps) {
-      console.log(s)
+    for (const step of steps) {
+      console.log(step)
       await sleep(MODE === 'slow-build' ? 120 : 5)
     }
     if (MODE === 'failing-build') {
       console.error('ERROR: process "/bin/sh -c exit 1" did not complete successfully')
       process.exit(1)
+    }
+    const tag = flagValue(parsed.flags, '-t')
+    if (tag) {
+      const current = state()
+      current.images ??= []
+      if (!current.images.includes(tag)) current.images.push(tag)
+      save(current)
     }
     if (!process.env.FAKE_QUIET) console.log('fake: done')
     return

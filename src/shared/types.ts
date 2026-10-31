@@ -6,6 +6,7 @@ export interface ContainerSummary {
   platform: string
   created: string
   networks: string[]
+  labels: Record<string, string>
 }
 
 export interface SystemStatus {

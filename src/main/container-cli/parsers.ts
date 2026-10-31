@@ -27,6 +27,7 @@ function summarizeContainer(entry: unknown): ContainerSummary {
       : []
   const firstNet = record(statusNets[0])
   const cfgNets = Array.isArray(cfg['networks']) ? cfg['networks'] : []
+  const labels = record(cfg['labels'])
   return {
     id: str(e['id']) || str(cfg['id']),
     image: str(image['reference']),
@@ -34,7 +35,12 @@ function summarizeContainer(entry: unknown): ContainerSummary {
     ip: str(firstNet['ipv4Address']).split('/')[0],
     platform: [str(platform['os']), str(platform['architecture'])].filter(Boolean).join('/'),
     created: str(cfg['creationDate']),
-    networks: cfgNets.map((n) => str(record(n)['network'])).filter(Boolean)
+    networks: cfgNets.map((n) => str(record(n)['network'])).filter(Boolean),
+    labels: Object.fromEntries(
+      Object.entries(labels)
+        .map(([key, value]) => [key, str(value)] as const)
+        .filter(([, value]) => value !== '')
+    )
   }
 }
 

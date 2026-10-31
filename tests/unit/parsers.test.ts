@@ -41,7 +41,8 @@ describe('parseContainerList', () => {
         ip: '192.168.64.2',
         platform: 'linux/arm64',
         created: '2026-08-31T12:00:00Z',
-        networks: ['default']
+        networks: ['default'],
+        labels: {}
       }
     ])
   })
@@ -50,7 +51,16 @@ describe('parseContainerList', () => {
     expect(parseContainerList('')).toEqual([])
     expect(parseContainerList('   ')).toEqual([])
     expect(parseContainerList(JSON.stringify([{}]))).toEqual([
-      { id: '', image: '', state: '', ip: '', platform: '', created: '', networks: [] }
+      {
+        id: '',
+        image: '',
+        state: '',
+        ip: '',
+        platform: '',
+        created: '',
+        networks: [],
+        labels: {}
+      }
     ])
   })
 
