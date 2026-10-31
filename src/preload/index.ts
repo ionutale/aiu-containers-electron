@@ -1,10 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { CHANNELS, type ContainersApi } from '../shared/api'
-import type {
-  ComposeDoneEvent,
-  ComposeLogEvent,
-  ComposeOutputEvent
-} from '../shared/compose'
+import type { ComposeDoneEvent, ComposeLogEvent, ComposeOutputEvent } from '../shared/compose'
 import type { BuildDoneEvent, BuildOutputEvent } from '../shared/types'
 
 function subscribe<T>(channel: string, cb: (event: T) => void): () => void {

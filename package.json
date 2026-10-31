@@ -1,7 +1,7 @@
 {
   "name": "aiu-containers-electron",
-  "version": "0.1.0",
-  "description": "List running Apple containers and build images from a Dockerfile",
+  "version": "0.2.0",
+  "description": "List Apple containers, build images from a Dockerfile, and run a compose subset",
   "main": "./out/main/index.js",
   "author": "Ion Utale",
   "homepage": "https://electron-vite.org",

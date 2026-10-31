@@ -65,8 +65,7 @@ export interface ComposeProject {
 }
 
 export type ComposeParseResult =
-  | { ok: true; project: ComposeProject }
-  | { ok: false; errors: ComposeError[] }
+  { ok: true; project: ComposeProject } | { ok: false; errors: ComposeError[] }
 
 export interface ComposeParseOptions {
   projectName?: string
@@ -74,8 +73,7 @@ export interface ComposeParseOptions {
 }
 
 export type ComposeStartResult =
-  | { ok: true; runId: string }
-  | { ok: false; error: { message: string } }
+  { ok: true; runId: string } | { ok: false; error: { message: string } }
 
 export type ComposeActionResult = { ok: true } | { ok: false; message: string }
 

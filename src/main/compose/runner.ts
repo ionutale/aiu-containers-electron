@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type {
+  ComposeActionResult,
   ComposeDoneEvent,
   ComposeLogEvent,
   ComposeOutputEvent,
@@ -18,8 +19,6 @@ export interface ComposeRunnerEvents {
   onDone(event: ComposeDoneEvent): void
   onLog(event: ComposeLogEvent): void
 }
-
-export type ComposeActionResult = { ok: true } | { ok: false; message: string }
 
 class Canceled extends Error {
   constructor() {
@@ -75,9 +74,11 @@ export class ComposeRunner {
   async stop(project: ComposeProject): Promise<ComposeActionResult> {
     if (this.active) return { ok: false, message: 'A compose operation is already running.' }
     const containers = await this.projectContainers(project)
-    if (!containers.ok) return { ok: false, message: containers.message }
-    if (containers.containers.length === 0) return { ok: true }
-    const ids = containers.containers.map((container) => container.id)
+    if ('message' in containers) return { ok: false, message: containers.message }
+    const ids = containers.containers
+      .filter((container) => container.state === 'running')
+      .map((container) => container.id)
+    if (ids.length === 0) return { ok: true }
     const result = await runCli(['stop', ...ids], { env: this.env, timeoutMs: 60_000 })
     if (result.spawnError || result.timedOut || result.code !== 0) {
       return { ok: false, message: failureMessage(result, 'stop') }
@@ -91,10 +92,15 @@ export class ComposeRunner {
   ): Promise<ComposeActionResult> {
     if (this.active) return { ok: false, message: 'A compose operation is already running.' }
     const containers = await this.projectContainers(project)
-    if (!containers.ok) return { ok: false, message: containers.message }
+    if ('message' in containers) return { ok: false, message: containers.message }
     const ids = containers.containers.map((container) => container.id)
+    const running = containers.containers
+      .filter((container) => container.state === 'running')
+      .map((container) => container.id)
     if (ids.length > 0) {
-      await runCli(['stop', ...ids], { env: this.env, timeoutMs: 60_000 })
+      if (running.length > 0) {
+        await runCli(['stop', ...running], { env: this.env, timeoutMs: 60_000 })
+      }
       const deleted = await runCli(['delete', '--force', ...ids], {
         env: this.env,
         timeoutMs: 60_000
@@ -119,7 +125,7 @@ export class ComposeRunner {
   ): Promise<ComposeActionResult> {
     this.stopLogs()
     const containers = await this.projectContainers(project)
-    if (!containers.ok) return { ok: false, message: containers.message }
+    if ('message' in containers) return { ok: false, message: containers.message }
     const service = project.services.find((item) => item.name === serviceName)
     if (!service) return { ok: false, message: `Unknown service: ${serviceName}` }
     const container =
@@ -152,11 +158,8 @@ export class ComposeRunner {
     events: ComposeRunnerEvents,
     active: ActiveRun
   ): Promise<void> {
-    const emit = (
-      service: string | undefined,
-      stream: 'stdout' | 'stderr',
-      line: string
-    ): void => events.onOutput({ runId: active.runId, service, stream, line })
+    const emit = (service: string | undefined, stream: 'stdout' | 'stderr', line: string): void =>
+      events.onOutput({ runId: active.runId, service, stream, line })
 
     try {
       const alias = await this.aliasEnabled()
@@ -182,9 +185,9 @@ export class ComposeRunner {
         ok: false,
         message: canceled
           ? 'Canceled. Containers already started may still be running; use Down to clean up.'
-          : error instanceof Error
-            ? error.message
-            : String(error)
+          : `${
+              error instanceof Error ? error.message : String(error)
+            } Some resources may remain; use Down to clean up.`
       })
     }
   }
@@ -204,13 +207,7 @@ export class ComposeRunner {
     if (names.includes(project.network)) return
     emit(undefined, 'stdout', `Creating network ${project.network}`)
     const result = await runCli(
-      [
-        'network',
-        'create',
-        '--label',
-        `com.aiu.compose.project=${project.name}`,
-        project.network
-      ],
+      ['network', 'create', '--label', `com.aiu.compose.project=${project.name}`, project.network],
       { env: this.env, timeoutMs: 30_000 }
     )
     if (result.spawnError || result.timedOut || result.code !== 0) {
@@ -284,7 +281,7 @@ export class ComposeRunner {
     emit: (service: string | undefined, stream: 'stdout' | 'stderr', line: string) => void
   ): Promise<void> {
     const containers = await listContainers(false, { env: this.env })
-    if (!containers.ok) throw new Error(containers.error.message)
+    if ('error' in containers) throw new Error(containers.error.message)
     const existing = containers.containers.find((item) => item.id === service.containerName)
     if (!existing) return
 
@@ -342,7 +339,7 @@ export class ComposeRunner {
     project: ComposeProject
   ): Promise<{ ok: true; containers: ContainerSummary[] } | { ok: false; message: string }> {
     const result = await listContainers(false, { env: this.env })
-    if (!result.ok) return { ok: false, message: result.error.message }
+    if ('error' in result) return { ok: false, message: result.error.message }
     return {
       ok: true,
       containers: result.containers.filter(

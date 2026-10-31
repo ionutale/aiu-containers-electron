@@ -9,12 +9,18 @@ import { join } from 'node:path'
 const root = process.cwd()
 const outDir = join(root, 'docs', 'screenshots')
 const demo = '/Users/Shared/aiu-demo/hello'
+const stack = '/Users/Shared/aiu-demo/stack'
 
 mkdirSync(outDir, { recursive: true })
 mkdirSync(demo, { recursive: true })
+mkdirSync(stack, { recursive: true })
 writeFileSync(
   join(demo, 'Dockerfile'),
   'FROM alpine:3.20\nRUN echo "hello from aiu-containers-electron" > /hello.txt\nCMD ["cat", "/hello.txt"]\n'
+)
+writeFileSync(
+  join(stack, 'compose.yaml'),
+  'name: demo\nservices:\n  web:\n    image: nginx:latest\n    ports:\n      - "8080:80"\n    depends_on:\n      - db\n  db:\n    image: postgres:16\n    volumes:\n      - data:/var/lib/postgresql/data\n'
 )
 
 function fakeEnv() {
@@ -29,7 +35,8 @@ function fakeEnv() {
     PATH: `${binDir}:${process.env.PATH ?? ''}`,
     FAKE_CONTAINER_STATE: join(work, 'state.json'),
     FAKE_QUIET: '1',
-    AIU_E2E_DIR_DIALOG: demo
+    AIU_E2E_DIR_DIALOG: demo,
+    AIU_E2E_FILE_DIALOG: join(stack, 'compose.yaml')
   }
 }
 
@@ -53,6 +60,17 @@ async function openBuild(page) {
   await page.locator('nav').getByRole('button', { name: 'Build' }).click()
   await page.getByRole('heading', { name: 'Build' }).waitFor()
   await page.waitForTimeout(200)
+}
+
+async function captureCompose(page, name) {
+  await page.locator('nav').getByRole('button', { name: 'Compose' }).click()
+  await page.getByRole('heading', { name: 'Compose' }).waitFor()
+  await page.getByRole('button', { name: 'Open…' }).click()
+  await page.getByText('demo_default').waitFor()
+  await page.getByRole('button', { name: 'Up' }).click()
+  await page.getByText(/Up succeeded/).waitFor({ timeout: 30_000 })
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: join(outDir, name) })
 }
 
 await withApp('light', async (_app, page) => {
@@ -92,6 +110,14 @@ await withApp('light', async (app, page) => {
   await window.evaluate((win) => win.setSize(820, 720))
   await page.waitForTimeout(350)
   await page.screenshot({ path: join(outDir, 'containers-narrow.png') })
+})
+
+await withApp('light', async (_app, page) => {
+  await captureCompose(page, 'compose-light.png')
+})
+
+await withApp('dark', async (_app, page) => {
+  await captureCompose(page, 'compose-dark.png')
 })
 
 console.log(`screenshots written to ${outDir}`)

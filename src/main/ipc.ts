@@ -1,10 +1,6 @@
 import type { IpcMain } from 'electron'
 import { CHANNELS } from '../shared/api'
-import type {
-  ComposeActionResult,
-  ComposeParseResult,
-  ComposeStartResult
-} from '../shared/compose'
+import type { ComposeActionResult, ComposeParseResult, ComposeStartResult } from '../shared/compose'
 import type {
   ActionResult,
   BuildRequest,
@@ -73,9 +69,8 @@ export function registerIpc(ipcMain: Pick<IpcMain, 'handle'>, deps: IpcDeps): vo
   ipcMain.handle(CHANNELS.composeCancel, (_e, payload: { runId: string }) =>
     deps.composeCancel(payload.runId)
   )
-  ipcMain.handle(
-    CHANNELS.composeStop,
-    (_e, payload: { file: string; projectName?: string }) => deps.composeStop(payload)
+  ipcMain.handle(CHANNELS.composeStop, (_e, payload: { file: string; projectName?: string }) =>
+    deps.composeStop(payload)
   )
   ipcMain.handle(
     CHANNELS.composeDown,

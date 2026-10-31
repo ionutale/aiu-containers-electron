@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { parseComposeFile } from '../../src/main/compose/parse'
-import type { ComposeParseResult, ComposeProject } from '../../src/shared/compose'
+import type { ComposeError, ComposeParseResult, ComposeProject } from '../../src/shared/compose'
 
 function fixture(files: Record<string, string>): string {
   const dir = mkdtempSync(join(tmpdir(), 'compose-'))
@@ -13,16 +13,20 @@ function fixture(files: Record<string, string>): string {
   return dir
 }
 
-function errorsOf(result: ComposeParseResult) {
+function errorsOf(result: ComposeParseResult): ComposeError[] {
   return 'errors' in result ? result.errors : []
 }
 
 function projectOf(result: ComposeParseResult): ComposeProject {
   if ('project' in result) return result.project
-  throw new Error(errorsOf(result).map((error) => error.message).join('\n'))
+  throw new Error(
+    errorsOf(result)
+      .map((error) => error.message)
+      .join('\n')
+  )
 }
 
-function parse(files: Record<string, string>, env: NodeJS.ProcessEnv = {}) {
+function parse(files: Record<string, string>, env: NodeJS.ProcessEnv = {}): ComposeParseResult {
   const dir = fixture(files)
   return parseComposeFile(join(dir, 'compose.yaml'), { env })
 }
@@ -89,8 +93,15 @@ services:
       { NAME: 'from-shell', EMPTY: '' }
     )
 
-    if (!result.ok) throw new Error(errorsOf(result).map((e) => e.message).join('\n'))
-    expect(Object.fromEntries(projectOf(result).services[0].environment.map((e) => [e.key, e.value]))).toEqual({
+    if (!result.ok)
+      throw new Error(
+        errorsOf(result)
+          .map((e) => e.message)
+          .join('\n')
+      )
+    expect(
+      Object.fromEntries(projectOf(result).services[0].environment.map((e) => [e.key, e.value]))
+    ).toEqual({
       NAME: 'from-shell',
       ONLY_FILE: 'file-value',
       FALLBACK: 'fallback',
@@ -125,11 +136,47 @@ services:
       B: "2"
 `
     })
-    if (!result.ok) throw new Error(errorsOf(result).map((e) => e.message).join('\n'))
+    if (!result.ok)
+      throw new Error(
+        errorsOf(result)
+          .map((e) => e.message)
+          .join('\n')
+      )
     expect(projectOf(result).services[0].environment).toEqual([
       { key: 'A', value: '1' },
       { key: 'B', value: '2' }
     ])
+  })
+
+  it('accepts top-level named volume declarations', () => {
+    const result = parse({
+      'compose.yaml': `
+volumes:
+  data:
+services:
+  app:
+    image: alpine:3.20
+    volumes:
+      - data:/data
+`
+    })
+    if ('errors' in result) throw new Error(result.errors.map((e) => e.message).join('\n'))
+    expect(result.project.namedVolumes).toEqual([`${result.project.name}_data`])
+  })
+
+  it('warns when a top-level volume declares unsupported options', () => {
+    const result = parse({
+      'compose.yaml': `
+volumes:
+  data:
+    driver: custom
+services:
+  app:
+    image: alpine:3.20
+`
+    })
+    if ('errors' in result) throw new Error(result.errors.map((e) => e.message).join('\n'))
+    expect(result.project.warnings.some((warning) => warning.key === 'volumes')).toBe(true)
   })
 
   it('errors for a missing env_file', () => {
@@ -151,7 +198,12 @@ services:
       test: ["CMD", "true"]
 `
     })
-    if (!result.ok) throw new Error(errorsOf(result).map((e) => e.message).join('\n'))
+    if (!result.ok)
+      throw new Error(
+        errorsOf(result)
+          .map((e) => e.message)
+          .join('\n')
+      )
     const keys = projectOf(result).warnings.map((w) => w.key)
     expect(keys).toEqual(expect.arrayContaining(['restart', 'healthcheck']))
   })
@@ -205,7 +257,9 @@ services:
   })
 
   it('requires a host port and supports host IPs and udp', () => {
-    const bare = parse({ 'compose.yaml': 'services:\n  a:\n    image: alpine\n    ports: ["80"]\n' })
+    const bare = parse({
+      'compose.yaml': 'services:\n  a:\n    image: alpine\n    ports: ["80"]\n'
+    })
     expect(bare.ok).toBe(false)
 
     const result = parse({
@@ -218,7 +272,12 @@ services:
       - "5353:53/udp"
 `
     })
-    if (!result.ok) throw new Error(errorsOf(result).map((e) => e.message).join('\n'))
+    if (!result.ok)
+      throw new Error(
+        errorsOf(result)
+          .map((e) => e.message)
+          .join('\n')
+      )
     expect(projectOf(result).services[0].ports[0]).toMatchObject({
       hostIp: '127.0.0.1',
       hostPort: 5432,
@@ -245,7 +304,12 @@ services:
     user: "1000:1000"
 `
     })
-    if (!result.ok) throw new Error(errorsOf(result).map((e) => e.message).join('\n'))
+    if (!result.ok)
+      throw new Error(
+        errorsOf(result)
+          .map((e) => e.message)
+          .join('\n')
+      )
     const app = projectOf(result).services[0]
     expect(app.build).toMatchObject({
       dockerfile: 'Dockerfile.dev',

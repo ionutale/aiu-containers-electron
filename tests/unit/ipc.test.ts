@@ -104,7 +104,10 @@ describe('registerIpc', () => {
       file: '/p/compose.yaml',
       removeVolumes: true
     })
-    await main.handlers.get(CHANNELS.composeLogs)!(null, { file: '/p/compose.yaml', service: 'web' })
+    await main.handlers.get(CHANNELS.composeLogs)!(null, {
+      file: '/p/compose.yaml',
+      service: 'web'
+    })
     expect(d.composeLogs).toHaveBeenCalledWith({ file: '/p/compose.yaml', service: 'web' })
   })
 })

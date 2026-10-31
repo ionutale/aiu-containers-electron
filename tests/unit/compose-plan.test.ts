@@ -19,7 +19,13 @@ const service: ComposeService = {
   ports: [{ raw: '8080:80', hostPort: 8080, containerPort: 80, protocol: 'tcp' }],
   volumes: [
     { raw: '/host:/data:ro', type: 'bind', source: '/host', target: '/data', readOnly: true },
-    { raw: 'demo_data:/var/lib/data', type: 'volume', source: 'demo_data', target: '/var/lib/data', readOnly: false }
+    {
+      raw: 'demo_data:/var/lib/data',
+      type: 'volume',
+      source: 'demo_data',
+      target: '/var/lib/data',
+      readOnly: false
+    }
   ],
   dependsOn: [],
   workingDir: '/app',

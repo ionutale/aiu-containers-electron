@@ -128,6 +128,11 @@ export async function openBuild(window: Page): Promise<void> {
   await window.getByRole('heading', { name: 'Build' }).waitFor()
 }
 
+export async function openCompose(window: Page): Promise<void> {
+  await window.locator('nav').getByRole('button', { name: 'Compose' }).click()
+  await window.getByRole('heading', { name: 'Compose' }).waitFor()
+}
+
 /** The form's submit button (the sidebar also has a "Build" button). */
 export function buildButton(window: Page): Locator {
   return window.locator('form').getByRole('button', { name: /^build$/i })

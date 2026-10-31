@@ -5,9 +5,44 @@ import { describe, expect, it } from 'vitest'
 import { BuildManager } from '../../src/main/container-cli/build'
 import { runCli } from '../../src/main/container-cli/cli'
 import { parseComposeFile } from '../../src/main/compose/parse'
-import { ComposeRunner } from '../../src/main/compose/runner'
-import type { ComposeDoneEvent, ComposeLogEvent, ComposeOutputEvent } from '../../src/shared/compose'
-import { makeFakeCli } from '../helpers/fakeCli'
+import { ComposeRunner, type ComposeRunnerEvents } from '../../src/main/compose/runner'
+import type {
+  ComposeDoneEvent,
+  ComposeLogEvent,
+  ComposeOutputEvent,
+  ComposeProject
+} from '../../src/shared/compose'
+import { makeFakeCli, type FakeCli, type FakeMode } from '../helpers/fakeCli'
+
+interface FakeContainer {
+  configuration: {
+    id: string
+    labels: Record<string, string>
+    publishedPorts: { hostPort: number; containerPort: number; proto: string }[]
+  }
+  status: string
+}
+
+interface FakeState {
+  networks: string[]
+  volumes: string[]
+  images: string[]
+  extra: FakeContainer[]
+  overrides: Record<string, { status: string }>
+  deleted: string[]
+}
+
+interface ComposeContext {
+  fake: FakeCli
+  dir: string
+  file: string
+  project: ComposeProject
+  runner: ComposeRunner
+  outputs: ComposeOutputEvent[]
+  logs: ComposeLogEvent[]
+  done: Promise<ComposeDoneEvent>
+  events: ComposeRunnerEvents
+}
 
 function projectWith(compose: string): { dir: string; file: string } {
   const dir = mkdtempSync(join(tmpdir(), 'compose-run-'))
@@ -16,11 +51,11 @@ function projectWith(compose: string): { dir: string; file: string } {
   return { dir, file: join(dir, 'compose.yaml') }
 }
 
-function setup(compose: string, mode?: Parameters<typeof makeFakeCli>[1]['mode']) {
+function setup(compose: string, mode?: FakeMode): ComposeContext {
   const fake = makeFakeCli(mkdtempSync(join(tmpdir(), 'compose-cli-')), { mode })
   const { dir, file } = projectWith(compose)
   const parsed = parseComposeFile(file, { env: {} })
-  if (!parsed.ok) throw new Error(parsed.errors.map((e) => e.message).join('\n'))
+  if ('errors' in parsed) throw new Error(parsed.errors.map((e) => e.message).join('\n'))
   const runner = new ComposeRunner(new BuildManager({ env: fake.env }), { env: fake.env })
   const outputs: ComposeOutputEvent[] = []
   const logs: ComposeLogEvent[] = []
@@ -36,17 +71,21 @@ function setup(compose: string, mode?: Parameters<typeof makeFakeCli>[1]['mode']
   return { fake, dir, file, project: parsed.project, runner, outputs, logs, done, events }
 }
 
-function state(path: string): Record<string, any> {
-  return JSON.parse(readFileSync(path, 'utf8'))
+function state(path: string): FakeState {
+  return JSON.parse(readFileSync(path, 'utf8')) as FakeState
 }
 
-async function runUp(ctx: ReturnType<typeof setup>): Promise<ComposeDoneEvent> {
+async function runUp(ctx: ComposeContext): Promise<ComposeDoneEvent> {
   return new Promise((resolve) => {
-    const started = ctx.runner.startUp(ctx.project, {}, {
-      onOutput: ctx.events.onOutput,
-      onLog: ctx.events.onLog,
-      onDone: resolve
-    })
+    const started = ctx.runner.startUp(
+      ctx.project,
+      {},
+      {
+        onOutput: ctx.events.onOutput,
+        onLog: ctx.events.onLog,
+        onDone: resolve
+      }
+    )
     if (started.ok === false) throw new Error(started.error.message)
   })
 }
@@ -77,9 +116,9 @@ describe('ComposeRunner', () => {
     const saved = state(ctx.fake.statePath)
     expect(saved.networks).toEqual(['demo_default'])
     expect(saved.volumes).toEqual(['demo_data'])
-    expect(saved.extra.map((c: any) => c.configuration.id)).toEqual(['demo-db', 'demo-web'])
+    expect(saved.extra.map((c) => c.configuration.id)).toEqual(['demo-db', 'demo-web'])
 
-    const web = saved.extra.find((c: any) => c.configuration.id === 'demo-web')
+    const web = saved.extra.find((c) => c.configuration.id === 'demo-web')
     expect(web.configuration.labels).toMatchObject({
       'com.aiu.compose.project': 'demo',
       'com.aiu.compose.service': 'web'
@@ -89,9 +128,9 @@ describe('ComposeRunner', () => {
       containerPort: 80,
       proto: 'tcp'
     })
-    expect(ctx.outputs.some((line) => line.service === 'web' && line.line.includes('demo-web'))).toBe(
-      true
-    )
+    expect(
+      ctx.outputs.some((line) => line.service === 'web' && line.line.includes('demo-web'))
+    ).toBe(true)
   })
 
   it('builds a service whose tag is missing, then runs it', async () => {
@@ -109,7 +148,7 @@ services:
 
     const saved = state(ctx.fake.statePath)
     expect(saved.images).toContain('demo-app')
-    expect(saved.extra.map((c: any) => c.configuration.id)).toEqual(['demo-app'])
+    expect(saved.extra.map((c) => c.configuration.id)).toEqual(['demo-app'])
     expect(ctx.outputs.some((line) => line.line.includes('fake build args'))).toBe(true)
   })
 
@@ -155,7 +194,7 @@ services:
     expect(done.message).toMatch(/belongs to project other/i)
 
     const saved = state(ctx.fake.statePath)
-    expect(saved.extra.map((c: any) => c.configuration.id)).toContain('demo-web')
+    expect(saved.extra.map((c) => c.configuration.id)).toContain('demo-web')
   })
 
   it('streams logs for a service and stops following', async () => {

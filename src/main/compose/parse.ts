@@ -14,7 +14,7 @@ import type {
   ComposeWarning
 } from '../../shared/compose'
 
-const TOP_LEVEL_KEYS = new Set(['name', 'services', 'version'])
+const TOP_LEVEL_KEYS = new Set(['name', 'services', 'version', 'volumes'])
 const SUPPORTED_KEYS = new Set([
   'image',
   'build',
@@ -172,7 +172,8 @@ function interpolateValue(
   path: string
 ): unknown {
   if (typeof value === 'string') return interpolateString(value, env, errors, path)
-  if (Array.isArray(value)) return value.map((item, i) => interpolateValue(item, env, errors, `${path}[${i}]`))
+  if (Array.isArray(value))
+    return value.map((item, i) => interpolateValue(item, env, errors, `${path}[${i}]`))
   if (isRecord(value)) {
     const out: Record<string, unknown> = {}
     for (const [key, item] of Object.entries(value)) {
@@ -324,9 +325,7 @@ function parseMount(
     return null
   }
   if (isBindSource(sourceRaw)) {
-    const expanded = sourceRaw.startsWith('~')
-      ? join(homedir(), sourceRaw.slice(1))
-      : sourceRaw
+    const expanded = sourceRaw.startsWith('~') ? join(homedir(), sourceRaw.slice(1)) : sourceRaw
     return {
       raw,
       type: 'bind',
@@ -355,12 +354,13 @@ function parseBuild(
   dir: string,
   project: string,
   service: string,
+  env: Record<string, string | undefined>,
   errors: ComposeError[],
   warnings: ComposeWarning[]
 ): ComposeBuildSpec | null {
   let context = '.'
   let dockerfile: string | undefined
-  let args: { key: string; value: string }[] = []
+  const args: { key: string; value: string }[] = []
   let target: string | undefined
   let platform: string | undefined
 
@@ -401,7 +401,11 @@ function parseBuild(
         for (const [key, item] of Object.entries(value.args)) {
           const text = scalar(item)
           if (text === null && item !== null && item !== undefined) {
-            errors.push({ message: `Build argument ${key} must be a scalar.`, service, key: 'build.args' })
+            errors.push({
+              message: `Build argument ${key} must be a scalar.`,
+              service,
+              key: 'build.args'
+            })
           } else if (text !== null) {
             args.push({ key, value: text })
           }
@@ -414,7 +418,7 @@ function parseBuild(
           }
           const eq = item.indexOf('=')
           if (eq > 0) args.push({ key: item.slice(0, eq), value: item.slice(eq + 1) })
-          else args.push({ key: item, value: process.env[item] ?? '' })
+          else args.push({ key: item, value: env[item] ?? '' })
         }
       } else {
         errors.push({ message: 'build.args must be a map or list.', service, key: 'build.args' })
@@ -457,7 +461,11 @@ function serviceEnvironment(
       }
       const text = scalar(item)
       if (text === null) {
-        errors.push({ message: `Environment value for ${key} must be a scalar.`, service, key: 'environment' })
+        errors.push({
+          message: `Environment value for ${key} must be a scalar.`,
+          service,
+          key: 'environment'
+        })
         continue
       }
       out.push({ key, value: text })
@@ -467,7 +475,11 @@ function serviceEnvironment(
   if (Array.isArray(value)) {
     for (const item of value) {
       if (typeof item !== 'string') {
-        errors.push({ message: 'Each environment entry must be a string.', service, key: 'environment' })
+        errors.push({
+          message: 'Each environment entry must be a string.',
+          service,
+          key: 'environment'
+        })
         continue
       }
       const eq = item.indexOf('=')
@@ -494,7 +506,11 @@ function readEnvFiles(
   const files = value === undefined ? [] : Array.isArray(value) ? value : [value]
   for (const file of files) {
     if (typeof file !== 'string') {
-      errors.push({ message: 'env_file must be a string or a list of strings.', service, key: 'env_file' })
+      errors.push({
+        message: 'env_file must be a string or a list of strings.',
+        service,
+        key: 'env_file'
+      })
       continue
     }
     const path = isAbsolute(file) ? file : resolve(dir, file)
@@ -543,7 +559,10 @@ function parseService(
     } else image = text
   }
 
-  const build = value.build === undefined ? undefined : parseBuild(value.build, dir, project, name, errors, warnings)
+  const build =
+    value.build === undefined
+      ? undefined
+      : parseBuild(value.build, dir, project, name, env, errors, warnings)
   if (!image && !build) {
     errors.push({ message: `Service ${name} needs an image or a build section.`, service: name })
     return null
@@ -553,7 +572,11 @@ function parseService(
   if (value.container_name !== undefined) {
     const text = scalar(value.container_name)
     if (text === null || !/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(text)) {
-      errors.push({ message: 'container_name must be a valid container name.', service: name, key: 'container_name' })
+      errors.push({
+        message: 'container_name must be a valid container name.',
+        service: name,
+        key: 'container_name'
+      })
     } else containerName = text
   }
 
@@ -592,13 +615,21 @@ function parseService(
     if (Array.isArray(value.depends_on)) {
       for (const item of value.depends_on) {
         if (typeof item !== 'string') {
-          errors.push({ message: 'depends_on entries must be service names.', service: name, key: 'depends_on' })
+          errors.push({
+            message: 'depends_on entries must be service names.',
+            service: name,
+            key: 'depends_on'
+          })
         } else dependsOn.push(item)
       }
     } else if (isRecord(value.depends_on)) {
       for (const [dependency, options] of Object.entries(value.depends_on)) {
         dependsOn.push(dependency)
-        if (isRecord(options) && options.condition !== undefined && options.condition !== 'service_started') {
+        if (
+          isRecord(options) &&
+          options.condition !== undefined &&
+          options.condition !== 'service_started'
+        ) {
           warnings.push({
             message: `depends_on condition "${String(options.condition)}" is ignored; services start in order only.`,
             service: name,
@@ -607,7 +638,11 @@ function parseService(
         }
       }
     } else {
-      errors.push({ message: 'depends_on must be a list or a map.', service: name, key: 'depends_on' })
+      errors.push({
+        message: 'depends_on must be a list or a map.',
+        service: name,
+        key: 'depends_on'
+      })
     }
   }
 
@@ -617,7 +652,11 @@ function parseService(
   }
   const entrypoint = commandValue(value.entrypoint)
   if (entrypoint === null) {
-    errors.push({ message: 'entrypoint must be a string or a list.', service: name, key: 'entrypoint' })
+    errors.push({
+      message: 'entrypoint must be a string or a list.',
+      service: name,
+      key: 'entrypoint'
+    })
   }
 
   const stringOption = (key: string): string | undefined => {
@@ -647,10 +686,7 @@ function parseService(
   }
 }
 
-function orderServices(
-  services: ComposeService[],
-  errors: ComposeError[]
-): ComposeService[] {
+function orderServices(services: ComposeService[], errors: ComposeError[]): ComposeService[] {
   const byName = new Map(services.map((service) => [service.name, service]))
   const state = new Map<string, 'visiting' | 'done'>()
   const ordered: ComposeService[] = []
@@ -698,7 +734,12 @@ export function parseComposeFile(file: string, opts: ComposeParseOptions = {}): 
   } catch (error) {
     return {
       ok: false,
-      errors: [{ message: `Cannot read ${file}: ${error instanceof Error ? error.message : String(error)}`, file }]
+      errors: [
+        {
+          message: `Cannot read ${file}: ${error instanceof Error ? error.message : String(error)}`,
+          file
+        }
+      ]
     }
   }
 
@@ -729,6 +770,19 @@ export function parseComposeFile(file: string, opts: ComposeParseOptions = {}): 
     errors.push({ message: `Unsupported top-level key: ${key}`, key })
   }
 
+  if (interpolated.volumes !== undefined && !isRecord(interpolated.volumes)) {
+    errors.push({ message: 'Top-level volumes must be a map.', key: 'volumes' })
+  } else if (isRecord(interpolated.volumes)) {
+    for (const [volume, options] of Object.entries(interpolated.volumes)) {
+      if (isRecord(options) && Object.keys(options).length > 0) {
+        warnings.push({
+          message: `Volume ${volume}: driver, external and driver_opts settings are not supported; a local volume is used.`,
+          key: 'volumes'
+        })
+      }
+    }
+  }
+
   const rawServices = interpolated.services
   if (!isRecord(rawServices) || Object.keys(rawServices).length === 0) {
     return { ok: false, errors: [{ message: 'services must contain at least one service.', file }] }
@@ -745,16 +799,7 @@ export function parseComposeFile(file: string, opts: ComposeParseOptions = {}): 
   const services: ComposeService[] = []
   const containerNames = new Set<string>()
   for (const [name, value] of Object.entries(rawServices)) {
-    const service = parseService(
-      name,
-      value,
-      projectName,
-      dir,
-      env,
-      namedVolumes,
-      errors,
-      warnings
-    )
+    const service = parseService(name, value, projectName, dir, env, namedVolumes, errors, warnings)
     if (!service) continue
     if (containerNames.has(service.containerName)) {
       errors.push({

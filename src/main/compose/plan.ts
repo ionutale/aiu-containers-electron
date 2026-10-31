@@ -22,7 +22,10 @@ export function imageTag(project: ComposeProject, service: ComposeService): stri
   return service.image ?? `${project.name}-${service.name}`
 }
 
-export function buildRequest(project: ComposeProject, service: ComposeService): BuildRequest | null {
+export function buildRequest(
+  project: ComposeProject,
+  service: ComposeService
+): BuildRequest | null {
   if (!service.build) return null
   return {
     contextDir: service.build.context,

@@ -119,11 +119,7 @@ app.whenReady().then(() => {
           error: { message: parsed.errors.map((error) => error.message).join('\n') }
         }
       }
-      return composeRunner.startUp(
-        parsed.project,
-        { forceBuild: req.forceBuild },
-        composeEvents
-      )
+      return composeRunner.startUp(parsed.project, { forceBuild: req.forceBuild }, composeEvents)
     },
     composeCancel: async (runId) => ({ ok: composeRunner.cancel(runId) }),
     composeStop: async (req) => {

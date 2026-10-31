@@ -1,7 +1,7 @@
 # Docker Compose Support (Native Subset) — Design
 
 Date: 2026-10-31
-Status: Approved (scope agreed); implemented.
+Status: Approved; implemented.
 
 ## Intent
 
@@ -48,17 +48,17 @@ extension keys (ignored).
 
 Service keys:
 
-| Key | Mapping |
-| --- | --- |
-| `image` | image reference |
-| `build` (string or object) | `context`, `dockerfile`, `args`, `target`, `platform`; built only when the tag is missing, or on Rebuild |
-| `environment` | map or `KEY=VALUE` list; `KEY` with no value inherits the host when set |
-| `env_file` | one or more files, parsed as dotenv; `environment` wins |
-| `ports` | `[host-ip:]host-port:container-port[/udp]`; a bare container port is an error (Docker's random host port is not supported) |
-| `volumes` | bind (`./`, `../`, absolute), named (`name:/path`), `:ro` option only |
-| `depends_on` | list or map keys; start order only |
-| `command`, `entrypoint` | list, or a string tokenized with quotes |
-| `working_dir`, `user`, `platform`, `container_name` | passed through |
+| Key                                                 | Mapping                                                                                                                    |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `image`                                             | image reference                                                                                                            |
+| `build` (string or object)                          | `context`, `dockerfile`, `args`, `target`, `platform`; built only when the tag is missing, or on Rebuild                   |
+| `environment`                                       | map or `KEY=VALUE` list; `KEY` with no value inherits the host when set                                                    |
+| `env_file`                                          | one or more files, parsed as dotenv; `environment` wins                                                                    |
+| `ports`                                             | `[host-ip:]host-port:container-port[/udp]`; a bare container port is an error (Docker's random host port is not supported) |
+| `volumes`                                           | bind (`./`, `../`, absolute), named (`name:/path`), `:ro` option only                                                      |
+| `depends_on`                                        | list or map keys; start order only                                                                                         |
+| `command`, `entrypoint`                             | list, or a string tokenized with quotes                                                                                    |
+| `working_dir`, `user`, `platform`, `container_name` | passed through                                                                                                             |
 
 Errors: `profiles`, `networks`, `network_mode`, `secrets`, `configs`, `extends`, `volumes_from`,
 `pid`, `ipc`. Warnings and ignored: `labels`, `logging`, `expose`, `healthcheck`, `restart`,
