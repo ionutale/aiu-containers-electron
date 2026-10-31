@@ -341,15 +341,15 @@ async function main() {
         process.exit(1)
       }
     }
-    console.log('fake build args: ' + JSON.stringify(rest))
+    // Debug noise by default (tests assert it); screenshot mode silences it.
+    if (!process.env.FAKE_QUIET) console.log('fake build args: ' + JSON.stringify(rest))
     if (MODE === 'blocking-build') {
       // Record our pid so cancellation tests can prove the process is gone.
       if (STATE_PATH) writeFileSync(`${STATE_PATH}.pid`, String(process.pid))
       console.log('#1 [internal] load build definition')
       await sleep(600_000)
       return
-    }
-    const steps = [
+    }    const steps = [
       '#1 [internal] load build definition from Dockerfile',
       '#2 [1/2] FROM alpine:3.20',
       '#3 [2/2] RUN echo hello',
@@ -364,7 +364,7 @@ async function main() {
       console.error('ERROR: process "/bin/sh -c exit 1" did not complete successfully')
       process.exit(1)
     }
-    console.log('fake: done')
+    if (!process.env.FAKE_QUIET) console.log('fake: done')
     return
   }
   console.error('fake container: unhandled command: ' + args.join(' '))
