@@ -28,7 +28,8 @@
     "build:mac": "pnpm build && electron-builder --mac"
   },
   "dependencies": {
-    "@electron-toolkit/utils": "^4.0.0"
+    "@electron-toolkit/utils": "^4.0.0",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
