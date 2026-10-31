@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#33363d" />
+      <stop offset="0.55" stop-color="#26282d" />
+      <stop offset="1" stop-color="#191a1e" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#38a2ff" />
+      <stop offset="1" stop-color="#0a6fd8" />
+    </linearGradient>
+    <linearGradient id="slabA" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c9cfd8" stop-opacity="0.55" />
+      <stop offset="1" stop-color="#9aa2ad" stop-opacity="0.35" />
+    </linearGradient>
+    <linearGradient id="slabB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e3e7ec" stop-opacity="0.9" />
+      <stop offset="1" stop-color="#b7bfc9" stop-opacity="0.75" />
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(330 250) scale(560)">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.14" />
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+    <filter id="slabShadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000000" flood-opacity="0.28" />
+    </filter>
+  </defs>
+
+  <!-- macOS squircle-ish plate -->
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#bg)" />
+  <rect x="32.5" y="32.5" width="959" height="959" rx="223.5" fill="none" stroke="#ffffff" stroke-opacity="0.10" />
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#glow)" />
+
+  <!-- stacked containers -->
+  <g filter="url(#slabShadow)">
+    <rect x="252" y="286" width="520" height="118" rx="28" fill="url(#slabA)" />
+    <rect x="252" y="286" width="520" height="118" rx="28" fill="none" stroke="#ffffff" stroke-opacity="0.10" />
+    <rect x="252" y="442" width="520" height="118" rx="28" fill="url(#slabB)" />
+    <rect x="252" y="442" width="520" height="118" rx="28" fill="none" stroke="#ffffff" stroke-opacity="0.14" />
+    <rect x="252" y="598" width="520" height="140" rx="30" fill="url(#accent)" />
+    <rect x="252.5" y="598.5" width="519" height="139" rx="29.5" fill="none" stroke="#ffffff" stroke-opacity="0.22" />
+  </g>
+
+  <!-- terminal prompt on the front container -->
+  <path
+    d="M300 650 L324 670 L300 690"
+    fill="none"
+    stroke="#ffffff"
+    stroke-opacity="0.62"
+    stroke-width="15"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <rect x="348" y="663" width="132" height="15" rx="7.5" fill="#ffffff" fill-opacity="0.4" />
+</svg>
