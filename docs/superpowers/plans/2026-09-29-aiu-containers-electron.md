@@ -1,6 +1,9 @@
 # Aiu Containers Electron Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
+
+**Status:** Completed — implemented, reviewed, and merged to `main`.
+
 
 **Goal:** A macOS Electron app that lists containers running in Apple's `container` runtime and builds images from a Dockerfile, with live streamed build output.
 
@@ -88,7 +91,7 @@ aiu-containers-electron/
 - Consumes: nothing.
 - Produces: a repo that builds (`pnpm build`) and tests (`pnpm test`); script names used by every later task.
 
-- [ ] **Step 1: Scaffold into a temp dir and copy into the repo**
+- [x] **Step 1: Scaffold into a temp dir and copy into the repo**
 
 The repo already contains `.git/` and `docs/`; the scaffolder wants an empty dir, so scaffold elsewhere and copy the contents in:
 
@@ -104,12 +107,12 @@ ls
 
 Expected: `.editorconfig .npmrc .prettierignore .prettierrc.yaml .vscode build electron.vite.config.ts eslint.config.mjs package.json resources svelte.config.mjs src tsconfig.json tsconfig.node.json tsconfig.web.json`.
 
-- [ ] **Step 2: Install dependencies**
+- [x] **Step 2: Install dependencies**
 
 Run: `pnpm install`
 Expected: completes; `postinstall` runs `electron-builder install-app-deps` without error.
 
-- [ ] **Step 3: Add `.gitignore`**
+- [x] **Step 3: Add `.gitignore`**
 
 ```
 node_modules/
@@ -121,7 +124,7 @@ coverage/
 .eslintcache
 ```
 
-- [ ] **Step 4: Rewrite `package.json` fields and scripts**
+- [x] **Step 4: Rewrite `package.json` fields and scripts**
 
 Change the top fields and scripts so they match this project and use pnpm:
 
@@ -148,7 +151,7 @@ Scripts (keep the rest of the template scripts):
 
 (Only the `npm run …` internals change to `pnpm …`; the rest stay as scaffolded.)
 
-- [ ] **Step 5: Add Vitest + config + a sanity test**
+- [x] **Step 5: Add Vitest + config + a sanity test**
 
 ```bash
 pnpm add -D vitest@^5
@@ -182,7 +185,7 @@ describe('project wiring', () => {
 })
 ```
 
-- [ ] **Step 6: Verify build and tests**
+- [x] **Step 6: Verify build and tests**
 
 Run: `pnpm test`
 Expected: 1 passed.
@@ -190,7 +193,7 @@ Expected: 1 passed.
 Run: `pnpm build`
 Expected: typecheck passes, `out/main/index.js`, `out/preload/index.js`, `out/renderer/index.html` exist.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A
@@ -209,7 +212,7 @@ git commit -m "chore: scaffold electron-vite svelte-ts app with vitest"
 - Consumes: nothing (pure module).
 - Produces: `ContainerSummary`, `SystemStatus`, `CliErrorCode`, `CliErrorInfo`, `ListResult`, `SystemStatusResult`, `ActionResult`, `BuildRequest`, `BuildStartResult`, `BuildOutputEvent`, `BuildDoneEvent`, `BuildLine`, `ContainersApi`, `CHANNELS`; `classifyCliFailure(input) => CliErrorInfo` (used by Tasks 4, 6, 7, 8).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/unit/errors.test.ts`:
 
@@ -245,12 +248,12 @@ describe('classifyCliFailure', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm test -- tests/unit/errors.test.ts`
 Expected: FAIL — cannot resolve `../../src/shared/errors`.
 
-- [ ] **Step 3: Write `src/shared/types.ts`**
+- [x] **Step 3: Write `src/shared/types.ts`**
 
 ```ts
 export interface ContainerSummary {
@@ -322,7 +325,7 @@ export interface BuildDoneEvent {
 export type BuildStartResult = { ok: true; runId: string } | { ok: false; error: CliErrorInfo }
 ```
 
-- [ ] **Step 4: Write `src/shared/api.ts`**
+- [x] **Step 4: Write `src/shared/api.ts`**
 
 ```ts
 import type {
@@ -362,7 +365,7 @@ export interface ContainersApi {
 }
 ```
 
-- [ ] **Step 5: Write `src/shared/errors.ts`** (minimal implementation)
+- [x] **Step 5: Write `src/shared/errors.ts`** (minimal implementation)
 
 ```ts
 import type { CliErrorInfo } from './types'
@@ -410,12 +413,12 @@ export function classifyCliFailure(input: {
 }
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `pnpm test -- tests/unit/errors.test.ts`
 Expected: 4 passed.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/shared tests/unit/errors.test.ts
@@ -434,7 +437,7 @@ git commit -m "feat: shared domain types and CLI error classification"
 - Consumes: nothing.
 - Produces: `makeFakeCli(root: string, opts?: { mode?: FakeMode }): { binDir: string; statePath: string; env: NodeJS.ProcessEnv }` where `FakeMode = 'default' | 'service-down' | 'bad-json' | 'slow-build' | 'blocking-build' | 'failing-build'`. Every later test that needs a CLI uses this. The fake's `list` output shape doubles as the reference for parsers in Task 5.
 
-- [ ] **Step 1: Write the fake CLI**
+- [x] **Step 1: Write the fake CLI**
 
 `tests/fake-container/container` (then `chmod +x`):
 
@@ -578,7 +581,7 @@ async function main() {
 main()
 ```
 
-- [ ] **Step 2: Write the helper**
+- [x] **Step 2: Write the helper**
 
 `tests/helpers/fakeCli.ts`:
 
@@ -614,7 +617,7 @@ export function makeFakeCli(root: string, opts: { mode?: FakeMode } = {}): FakeC
 }
 ```
 
-- [ ] **Step 3: Write the failing test**
+- [x] **Step 3: Write the failing test**
 
 `tests/unit/fakecli.test.ts`:
 
@@ -657,12 +660,12 @@ describe('fake container CLI', () => {
 })
 ```
 
-- [ ] **Step 4: Run test to verify it fails, then passes**
+- [x] **Step 4: Run test to verify it fails, then passes**
 
 Run: `pnpm test -- tests/unit/fakecli.test.ts`
 Expected first: FAIL (missing helper/fake). After Step 1–2 are in place: 3 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/fake-container tests/helpers tests/unit/fakecli.test.ts
@@ -681,7 +684,7 @@ git commit -m "test: stateful fake container CLI harness"
 - Consumes: `makeFakeCli` (Task 3).
 - Produces: `findContainerBinary(env?): string | null`; `runCli(args, { env?, timeoutMs? }): Promise<CliRunResult>`; `streamCli(args, { env? }, onLine): StreamHandle`; `getCliVersion(env?): Promise<{ path: string; version: string | null } | null>`; `isVersionAtLeast(v, min): boolean`. `CliRunResult = { code, signal, stdout, stderr, spawnError, timedOut }`; `CliStreamResult` adds `canceled: boolean`; `StreamHandle = { pid: number | undefined; cancel(): void; done: Promise<CliStreamResult> }`. Consumed by Tasks 6, 7.
 
-- [ ] **Step 1: Write the failing integration test**
+- [x] **Step 1: Write the failing integration test**
 
 `tests/integration/cli.test.ts`:
 
@@ -767,12 +770,12 @@ describe('getCliVersion / isVersionAtLeast', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm test -- tests/integration/cli.test.ts`
 Expected: FAIL — cannot resolve `src/main/container-cli/cli`.
 
-- [ ] **Step 3: Implement `src/main/container-cli/cli.ts`**
+- [x] **Step 3: Implement `src/main/container-cli/cli.ts`**
 
 ```ts
 import { spawn } from 'node:child_process'
@@ -944,12 +947,12 @@ export async function getCliVersion(
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm test -- tests/integration/cli.test.ts`
 Expected: 8 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/container-cli/cli.ts tests/integration/cli.test.ts
@@ -968,7 +971,7 @@ git commit -m "feat: container CLI client (locate, run, stream, cancel)"
 - Consumes: `ContainerSummary`, `SystemStatus` (Task 2).
 - Produces: `ParseError`; `parseContainerList(json: string): ContainerSummary[]`; `parseSystemStatus(json: string): SystemStatus`. Consumed by Task 6.
 
-- [ ] **Step 1: Capture real CLI output as fixtures**
+- [x] **Step 1: Capture real CLI output as fixtures**
 
 ```bash
 container system start   # if already running this is a no-op
@@ -979,7 +982,7 @@ head -c 400 tests/fixtures/real-list.json
 
 If the real shape differs from the field paths below, adapt `summarizeContainer` accordingly and say so in the commit message — tolerance (missing keys → empty values) is non-negotiable either way. If the service cannot start, keep the fixture capture as a pending manual step and proceed with the fake-CLI shape; note it in the commit.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 `tests/unit/parsers.test.ts`:
 
@@ -1063,12 +1066,12 @@ describe('parseSystemStatus', () => {
 })
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `pnpm test -- tests/unit/parsers.test.ts`
 Expected: FAIL — cannot resolve `parsers`.
 
-- [ ] **Step 4: Implement `src/main/container-cli/parsers.ts`**
+- [x] **Step 4: Implement `src/main/container-cli/parsers.ts`**
 
 ```ts
 import type { ContainerSummary, SystemStatus } from '../../shared/types'
@@ -1144,12 +1147,12 @@ export function parseSystemStatus(json: string): SystemStatus {
 }
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `pnpm test -- tests/unit/parsers.test.ts`
 Expected: 7 passed.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/main/container-cli/parsers.ts tests/fixtures tests/unit/parsers.test.ts
@@ -1168,7 +1171,7 @@ git commit -m "feat: tolerant parsers validated against real CLI fixtures"
 - Consumes: `runCli` (Task 4), `parseContainerList`/`parseSystemStatus` (Task 5), `classifyCliFailure` (Task 2).
 - Produces: `listContainers(runningOnly: boolean, opts?: { env?: NodeJS.ProcessEnv }): Promise<ListResult>`; `systemStatus(opts?): Promise<SystemStatusResult>`; `startSystem(opts?): Promise<ActionResult>`. Consumed by Task 8. This is the layer that turns CLI failures into classified `CliErrorInfo`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/integration/commands.test.ts`:
 
@@ -1241,12 +1244,12 @@ describe('systemStatus / startSystem', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm test -- tests/integration/commands.test.ts`
 Expected: FAIL — cannot resolve `commands`.
 
-- [ ] **Step 3: Implement `src/main/container-cli/commands.ts`**
+- [x] **Step 3: Implement `src/main/container-cli/commands.ts`**
 
 ```ts
 import { classifyCliFailure } from '../../shared/errors'
@@ -1303,12 +1306,12 @@ export async function startSystem(opts: Opts = {}): Promise<ActionResult> {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm test -- tests/integration/commands.test.ts`
 Expected: 8 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/container-cli/commands.ts tests/integration/commands.test.ts
@@ -1327,7 +1330,7 @@ git commit -m "feat: container command layer with classified errors"
 - Consumes: `streamCli` (Task 4), `classifyCliFailure` (Task 2), `BuildRequest`/`BuildLine`/`BuildDoneEvent`/`BuildStartResult` (Task 2).
 - Produces: `TAG_PATTERN`; `validateBuildRequest(req): string[]`; `buildArgv(req): string[]`; `class BuildManager` with `start(req, events): BuildStartResult` and `cancel(runId): boolean`, where `events = { onLine(runId, line): void; onDone(runId, done): void }` and `done: BuildDoneEvent` (without `runId`; the manager injects it). Consumed by Task 8.
 
-- [ ] **Step 1: Write the failing unit test**
+- [x] **Step 1: Write the failing unit test**
 
 `tests/unit/build.test.ts`:
 
@@ -1407,12 +1410,12 @@ describe('buildArgv', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm test -- tests/unit/build.test.ts`
 Expected: FAIL — cannot resolve `build`.
 
-- [ ] **Step 3: Implement `src/main/container-cli/build.ts`**
+- [x] **Step 3: Implement `src/main/container-cli/build.ts`**
 
 ```ts
 import { randomUUID } from 'node:crypto'
@@ -1514,12 +1517,12 @@ export class BuildManager {
 }
 ```
 
-- [ ] **Step 4: Run unit tests to verify they pass**
+- [x] **Step 4: Run unit tests to verify they pass**
 
 Run: `pnpm test -- tests/unit/build.test.ts`
 Expected: 6 passed.
 
-- [ ] **Step 5: Write the BuildManager integration test**
+- [x] **Step 5: Write the BuildManager integration test**
 
 `tests/integration/build-manager.test.ts`:
 
@@ -1592,12 +1595,12 @@ describe('BuildManager', () => {
 })
 ```
 
-- [ ] **Step 6: Run all tests**
+- [x] **Step 6: Run all tests**
 
 Run: `pnpm test`
 Expected: all suites pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/main/container-cli/build.ts tests/unit/build.test.ts tests/integration/build-manager.test.ts
@@ -1617,7 +1620,7 @@ git commit -m "feat: build validation, argv builder, and BuildManager"
 - Consumes: `CHANNELS`, `ContainersApi` (Task 2); `listContainers`/`systemStatus`/`startSystem` (Task 6); `BuildManager` (Task 7).
 - Produces: `registerIpc(ipcMain: Pick<IpcMain, 'handle'>, deps: IpcDeps): void`; `findDockerfile(dir: string): { dockerfile: string | null }`; a running app whose renderer sees `window.containers` (typed `ContainersApi`). Consumed by Tasks 9–12.
 
-- [ ] **Step 1: Write the failing unit test for context inspection**
+- [x] **Step 1: Write the failing unit test for context inspection**
 
 `tests/unit/context.test.ts`:
 
@@ -1650,12 +1653,12 @@ describe('findDockerfile', () => {
 })
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `pnpm test -- tests/unit/context.test.ts`
 Expected: FAIL — cannot resolve `src/main/context`.
 
-- [ ] **Step 3: Implement `src/main/context.ts`**
+- [x] **Step 3: Implement `src/main/context.ts`**
 
 ```ts
 import { existsSync } from 'node:fs'
@@ -1670,7 +1673,7 @@ export function findDockerfile(dir: string): { dockerfile: string | null } {
 }
 ```
 
-- [ ] **Step 4: Write the failing unit test for IPC registration**
+- [x] **Step 4: Write the failing unit test for IPC registration**
 
 `tests/unit/ipc.test.ts`:
 
@@ -1740,7 +1743,7 @@ describe('registerIpc', () => {
 })
 ```
 
-- [ ] **Step 5: Implement `src/main/ipc.ts`**
+- [x] **Step 5: Implement `src/main/ipc.ts`**
 
 ```ts
 import type { IpcMain } from 'electron'
@@ -1774,12 +1777,12 @@ export function registerIpc(ipcMain: Pick<IpcMain, 'handle'>, deps: IpcDeps): vo
 }
 ```
 
-- [ ] **Step 6: Run the tests**
+- [x] **Step 6: Run the tests**
 
 Run: `pnpm test -- tests/unit/context.test.ts tests/unit/ipc.test.ts`
 Expected: 6 passed.
 
-- [ ] **Step 7: Rewrite the preload**
+- [x] **Step 7: Rewrite the preload**
 
 `src/preload/index.ts`:
 
@@ -1834,7 +1837,7 @@ declare global {
 export {}
 ```
 
-- [ ] **Step 8: Wire the main process**
+- [x] **Step 8: Wire the main process**
 
 `src/main/index.ts` — replace the template's IPC test and wire everything (keep the template's window/dev-URL logic):
 
@@ -1928,14 +1931,14 @@ app.on('window-all-closed', () => {
 })
 ```
 
-- [ ] **Step 9: Verify the app compiles and boots**
+- [x] **Step 9: Verify the app compiles and boots**
 
 Run: `pnpm build`
 Expected: typecheck + build succeed.
 
 Run (manual, closes by itself is fine): `pnpm dev` — window opens with the template content; DevTools console shows no preload errors about `window.containers` (the renderer doesn't use it yet).
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add src/main src/preload package.json pnpm-lock.yaml tests/unit/ipc.test.ts tests/unit/context.test.ts
@@ -1955,7 +1958,7 @@ git commit -m "feat: typed IPC bridge, preload API, main-process wiring"
 - Consumes: `ContainersApi` (Task 2), `window.containers` (Task 8).
 - Produces: `getApi(): ContainersApi` (throws a friendly error if the bridge is missing); `formatElapsed(ms): string`; `defaultTagFor(dir): string`; `parseBuildArgs(text): { args: { key; value }[]; errors: string[] }` (last two used in Task 11); `Containers.svelte` happy-path list; renderer test harness (jsdom + testing-library) used by Tasks 10–12.
 
-- [ ] **Step 1: Add renderer test tooling**
+- [x] **Step 1: Add renderer test tooling**
 
 ```bash
 pnpm add -D jsdom@^30 @testing-library/svelte@^5.4 @testing-library/jest-dom@^7
@@ -1986,7 +1989,7 @@ import '@testing-library/jest-dom/vitest'
 
 Component tests start with `// @vitest-environment jsdom` at the top of the file.
 
-- [ ] **Step 2: Write failing tests for the pure helpers**
+- [x] **Step 2: Write failing tests for the pure helpers**
 
 `tests/unit/format.test.ts`:
 
@@ -2019,12 +2022,12 @@ describe('formatElapsed', () => {
 })
 ```
 
-- [ ] **Step 3: Run to verify it fails**
+- [x] **Step 3: Run to verify it fails**
 
 Run: `pnpm test -- tests/unit/format.test.ts`
 Expected: FAIL — cannot resolve `lib/format`.
 
-- [ ] **Step 4: Implement `src/renderer/src/lib/format.ts` and `src/renderer/src/lib/api.ts`**
+- [x] **Step 4: Implement `src/renderer/src/lib/format.ts` and `src/renderer/src/lib/api.ts`**
 
 `format.ts`:
 
@@ -2083,7 +2086,7 @@ export function getApi(): ContainersApi {
 }
 ```
 
-- [ ] **Step 5: Add component test for the minimal list, then implement**
+- [x] **Step 5: Add component test for the minimal list, then implement**
 
 `tests/unit/containers-screen.test.ts`:
 
@@ -2250,7 +2253,7 @@ pnpm remove @electron-toolkit/preload
 
 Then simplify `src/preload/index.ts` (remove the `electronAPI` import and the `exposeInMainWorld('electron', …)` line) and `src/preload/index.d.ts` (drop the `ElectronAPI` import and field).
 
-- [ ] **Step 6: Run tests and typecheck**
+- [x] **Step 6: Run tests and typecheck**
 
 Run: `pnpm test`
 Expected: all suites pass, including the new jsdom component test.
@@ -2258,7 +2261,7 @@ Expected: all suites pass, including the new jsdom component test.
 Run: `pnpm typecheck`
 Expected: clean.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A
@@ -2277,7 +2280,7 @@ git commit -m "feat: renderer harness, app shell, minimal container list"
 - Consumes: `getApi()` (Task 9), `listContainers` error codes (Tasks 2, 6).
 - Produces: the complete Containers screen behavior: `Show stopped` toggle (`list(false)`), 3s auto-refresh while the window is visible, service-down banner with a working **Start service** (calls `systemStart`, then reloads), CLI-missing banner, parse-error banner, empty state.
 
-- [ ] **Step 1: Extend the component test (failing)**
+- [x] **Step 1: Extend the component test (failing)**
 
 Add to `tests/unit/containers-screen.test.ts`:
 
@@ -2347,12 +2350,12 @@ it('auto-refreshes every 3 seconds while visible', async () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify the new cases fail**
+- [x] **Step 2: Run to verify the new cases fail**
 
 Run: `pnpm test -- tests/unit/containers-screen.test.ts`
 Expected: FAIL — no toggle/banners/auto-refresh yet.
 
-- [ ] **Step 3: Implement the full screen**
+- [x] **Step 3: Implement the full screen**
 
 `src/renderer/src/screens/Containers.svelte`:
 
@@ -2489,12 +2492,12 @@ Add to `main.css`:
 .controls label { display: flex; align-items: center; gap: 6px; }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm test -- tests/unit/containers-screen.test.ts`
 Expected: 5 passed. (If the auto-refresh fake-timer test fights Svelte's scheduler, assert with `await vi.advanceTimersByTimeAsync(3100)` and allow ≥2 calls.)
 
-- [ ] **Step 5: Full check + commit**
+- [x] **Step 5: Full check + commit**
 
 Run: `pnpm test && pnpm typecheck`
 Expected: clean.
@@ -2517,7 +2520,7 @@ git commit -m "feat: containers screen states, toggle, and auto-refresh"
 - Consumes: `getApi()` (Task 9), `defaultTagFor`/`parseBuildArgs` (Task 9), `BuildRequest`/`BuildStartResult` (Task 2).
 - Produces: complete Build form with `Advanced` disclosure, context picker → `contextInspect` → Dockerfile default, tag default from folder, validation errors; **Build** calls `buildStart` and surfaces `{ok:false}` errors. Streaming arrives in Task 12. Also updates App shell with the Build nav item.
 
-- [ ] **Step 1: Add picker tests for `parseBuildArgs` (failing)**
+- [x] **Step 1: Add picker tests for `parseBuildArgs` (failing)**
 
 Extend `tests/unit/format.test.ts`:
 
@@ -2542,12 +2545,12 @@ describe('parseBuildArgs', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `pnpm test -- tests/unit/format.test.ts`
 Expected: FAIL — `parseBuildArgs` is exported in Task 9's `format.ts`; if it already exists this fails only on behavior mismatches. Fix until green.
 
-- [ ] **Step 3: Write the failing component test**
+- [x] **Step 3: Write the failing component test**
 
 `tests/unit/build-screen.test.ts`:
 
@@ -2628,7 +2631,7 @@ describe('Build screen', () => {
 })
 ```
 
-- [ ] **Step 4: Implement `src/renderer/src/screens/Build.svelte`**
+- [x] **Step 4: Implement `src/renderer/src/screens/Build.svelte`**
 
 ```svelte
 <script lang="ts">
@@ -2784,12 +2787,12 @@ form textarea { min-height: 70px; }
 button[type='submit'] { margin-top: 12px; padding: 7px 16px; }
 ```
 
-- [ ] **Step 5: Run tests + typecheck**
+- [x] **Step 5: Run tests + typecheck**
 
 Run: `pnpm test && pnpm typecheck`
 Expected: clean.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/renderer tests/unit/format.test.ts tests/unit/build-screen.test.ts
@@ -2808,7 +2811,7 @@ git commit -m "feat: build form with context picker, defaults, and validation"
 - Consumes: `onBuildOutput`/`onBuildDone`/`buildCancel` (Task 2), `formatElapsed` (Task 9).
 - Produces: live log panel (auto-scroll, stderr styled), Cancel button, footer status (`building` / `succeeded` / `failed` / `canceled`, exit code, elapsed, tag). Build button disabled while running.
 
-- [ ] **Step 1: Extend the test (failing)**
+- [x] **Step 1: Extend the test (failing)**
 
 Add to `tests/unit/build-screen.test.ts`:
 
@@ -2860,12 +2863,12 @@ it('reports failure with the error message', async () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify the new cases fail**
+- [x] **Step 2: Run to verify the new cases fail**
 
 Run: `pnpm test -- tests/unit/build-screen.test.ts`
 Expected: new cases FAIL.
 
-- [ ] **Step 3: Implement streaming + footer in `Build.svelte`**
+- [x] **Step 3: Implement streaming + footer in `Build.svelte`**
 
 Replace the script's build-related state and `start()` (keep the form markup from Task 11, append the log panel and footer):
 
@@ -3002,12 +3005,12 @@ Add to `main.css`:
 
 Also disable the Build button while `runId` is set: `disabled={starting || runId !== null || !contextDir || !tag.trim()}`.
 
-- [ ] **Step 4: Run tests + typecheck**
+- [x] **Step 4: Run tests + typecheck**
 
 Run: `pnpm test && pnpm typecheck`
 Expected: clean.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer tests/unit/build-screen.test.ts
@@ -3027,7 +3030,7 @@ git commit -m "feat: live build log, cancel, and result footer"
 - Consumes: everything built so far.
 - Produces: `pnpm build:mac` → `dist/*.dmg` (unsigned); a README with usage; recorded evidence that the app works against the real runtime.
 
-- [ ] **Step 1: Configure electron-builder**
+- [x] **Step 1: Configure electron-builder**
 
 Edit `electron-builder.yml`: set `appId: com.ionutale.aiu-containers-electron`, `productName: Aiu Containers Electron`, keep `directories.buildResources: build`, and for mac:
 
@@ -3040,12 +3043,12 @@ mac:
 
 Remove the template's camera/microphone `extendInfo` entries and the `win`/`linux`/`nsis`/`appImage`/`publish` sections (not shipped here).
 
-- [ ] **Step 2: Build the unsigned dmg**
+- [x] **Step 2: Build the unsigned dmg**
 
 Run: `pnpm build:mac`
 Expected: `dist/` contains a `.dmg` and/or `.app` named after the product. Record the file names.
 
-- [ ] **Step 3: Write the smoke fixture and README**
+- [x] **Step 3: Write the smoke fixture and README**
 
 `examples/hello/Dockerfile`:
 
@@ -3057,7 +3060,7 @@ CMD ["cat", "/hello.txt"]
 
 `README.md` — replace the template's: project summary; requirements (macOS arm64, Apple `container` CLI 0.10+ with the service started, Node 20+/pnpm); commands (`pnpm dev`, `pnpm test`, `pnpm build`, `pnpm build:mac`); Gatekeeper note (unsigned build: right-click → Open on first launch); note that the first build downloads the builder image and can take a while; screens description (Containers: running by default, Show stopped toggle, auto-refresh; Build: context/Dockerfile/tag + Advanced, live log, cancel).
 
-- [ ] **Step 4: Run the live smoke pass**
+- [x] **Step 4: Run the live smoke pass**
 
 Two parts — the executor automates what it can and records results in the commit message; the GUI checks are human steps (mark them pending if no human is present).
 
@@ -3085,7 +3088,7 @@ container delete --force aiu-smoke
 container image delete --force aiu-electron-smoke:latest
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add electron-builder.yml README.md examples .gitignore

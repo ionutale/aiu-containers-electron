@@ -1,7 +1,7 @@
 # UI Refresh, App Icon, Screenshots and Public README — Design
 
 Date: 2026-10-31
-Status: Proposed (awaiting approval)
+Status: Approved; implemented.
 
 ## Intent
 

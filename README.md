@@ -25,11 +25,15 @@
 | --- | --- |
 | ![Containers screen in light mode](docs/screenshots/containers-light.png) | ![Containers screen in dark mode](docs/screenshots/containers-dark.png) |
 
-| Build — light | Running build |
+| Build — light | Build — dark |
 | --- | --- |
-| ![Build form in light mode](docs/screenshots/build-light.png) | ![Completed build with streamed log](docs/screenshots/build-log-light.png) |
+| ![Build form in light mode](docs/screenshots/build-light.png) | ![Build form in dark mode](docs/screenshots/build-dark.png) |
 
-<sub>Screenshots are captured from the real app by `node scripts/screenshots.mjs`, using the deterministic fake runtime and a demo context; the GitHub-rendered PNGs are 2× (Retina).</sub>
+**Streamed build output**
+
+![Completed build with streamed log](docs/screenshots/build-log-light.png)
+
+<sub>Screenshots are captured from the real app by `node scripts/screenshots.mjs`, using the deterministic fake runtime and a demo context; the GitHub-rendered PNGs are 2× (Retina). A `containers-narrow.png` capture is also committed to check the collapsed sidebar at 820px.</sub>
 
 ## What it does
 

@@ -1,7 +1,7 @@
 # Aiu Containers Electron — Design
 
 Date: 2026-09-29
-Status: Approved (design review); spec awaiting review
+Status: Approved; implemented (v0.1.0).
 
 ## Purpose
 
