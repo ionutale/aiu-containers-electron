@@ -111,7 +111,24 @@ export function ensureElectronDist({
   }
 
   const version = electronVersion(packageDir)
-  const zipPath = findCachedZip(electronCacheRoot(env), version, plat, arch)
+  let zipPath = findCachedZip(electronCacheRoot(env), version, plat, arch)
+
+  // pnpm's side-effects cache can restore a broken dist without re-running
+  // Electron's postinstall, so there may be no zip to repair from. Run
+  // Electron's own installer (which only downloads and extracts) to get one.
+  if (!zipPath) {
+    log('ensure-electron-dist: no cached Electron zip; downloading it with Electron’s installer.')
+    try {
+      execFileSync(process.execPath, [join(packageDir, 'install.js')], {
+        stdio: 'inherit',
+        env
+      })
+    } catch (error) {
+      warn(`ensure-electron-dist: installer failed: ${error?.message ?? error}`)
+    }
+    zipPath = findCachedZip(electronCacheRoot(env), version, plat, arch)
+  }
+
   if (!zipPath) {
     warn(
       `ensure-electron-dist: Electron ${version} is not extracted and no cached zip was found.\n` +
