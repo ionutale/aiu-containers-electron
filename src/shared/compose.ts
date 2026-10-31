@@ -77,6 +77,8 @@ export type ComposeStartResult =
   | { ok: true; runId: string }
   | { ok: false; error: { message: string } }
 
+export type ComposeActionResult = { ok: true } | { ok: false; message: string }
+
 export interface ComposeOutputEvent {
   runId: string
   service?: string

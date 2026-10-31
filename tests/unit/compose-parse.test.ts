@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { parseComposeFile } from '../../src/main/compose/parse'
+import type { ComposeParseResult, ComposeProject } from '../../src/shared/compose'
 
 function fixture(files: Record<string, string>): string {
   const dir = mkdtempSync(join(tmpdir(), 'compose-'))
@@ -10,6 +11,15 @@ function fixture(files: Record<string, string>): string {
     writeFileSync(join(dir, name), content)
   }
   return dir
+}
+
+function errorsOf(result: ComposeParseResult) {
+  return 'errors' in result ? result.errors : []
+}
+
+function projectOf(result: ComposeParseResult): ComposeProject {
+  if ('project' in result) return result.project
+  throw new Error(errorsOf(result).map((error) => error.message).join('\n'))
 }
 
 function parse(files: Record<string, string>, env: NodeJS.ProcessEnv = {}) {
@@ -41,18 +51,18 @@ services:
 
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    expect(result.project.name).toBe('demo-app')
-    expect(result.project.network).toBe('demo-app_default')
-    expect(result.project.namedVolumes).toEqual(['demo-app_data'])
-    expect(result.project.services.map((s) => s.name)).toEqual(['db', 'web'])
+    expect(projectOf(result).name).toBe('demo-app')
+    expect(projectOf(result).network).toBe('demo-app_default')
+    expect(projectOf(result).namedVolumes).toEqual(['demo-app_data'])
+    expect(projectOf(result).services.map((s) => s.name)).toEqual(['db', 'web'])
 
-    const web = result.project.services[1]
+    const web = projectOf(result).services[1]
     expect(web.containerName).toBe('demo-app-web')
     expect(web.ports[0]).toMatchObject({ hostPort: 8080, containerPort: 80, protocol: 'tcp' })
     expect(web.environment).toContainEqual({ key: 'MODE', value: 'dev' })
     expect(web.dependsOn).toEqual(['db'])
 
-    const db = result.project.services[0]
+    const db = projectOf(result).services[0]
     expect(db.volumes[0]).toMatchObject({
       type: 'volume',
       source: 'demo-app_data',
@@ -79,8 +89,8 @@ services:
       { NAME: 'from-shell', EMPTY: '' }
     )
 
-    if (!result.ok) throw new Error(result.errors.map((e) => e.message).join('\n'))
-    expect(Object.fromEntries(result.project.services[0].environment.map((e) => [e.key, e.value]))).toEqual({
+    if (!result.ok) throw new Error(errorsOf(result).map((e) => e.message).join('\n'))
+    expect(Object.fromEntries(projectOf(result).services[0].environment.map((e) => [e.key, e.value]))).toEqual({
       NAME: 'from-shell',
       ONLY_FILE: 'file-value',
       FALLBACK: 'fallback',
@@ -100,7 +110,7 @@ services:
 `
     })
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.errors[0].message).toMatch(/TOKEN/)
+    if (!result.ok) expect(errorsOf(result)[0].message).toMatch(/TOKEN/)
   })
 
   it('merges env_file then environment overrides', () => {
@@ -115,8 +125,8 @@ services:
       B: "2"
 `
     })
-    if (!result.ok) throw new Error(result.errors.map((e) => e.message).join('\n'))
-    expect(result.project.services[0].environment).toEqual([
+    if (!result.ok) throw new Error(errorsOf(result).map((e) => e.message).join('\n'))
+    expect(projectOf(result).services[0].environment).toEqual([
       { key: 'A', value: '1' },
       { key: 'B', value: '2' }
     ])
@@ -127,7 +137,7 @@ services:
       'compose.yaml': 'services:\n  app:\n    image: alpine\n    env_file: nope.env\n'
     })
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.errors[0].message).toMatch(/nope\.env/)
+    if (!result.ok) expect(errorsOf(result)[0].message).toMatch(/nope\.env/)
   })
 
   it('warns for ignored runtime keys but still parses', () => {
@@ -141,8 +151,8 @@ services:
       test: ["CMD", "true"]
 `
     })
-    if (!result.ok) throw new Error(result.errors.map((e) => e.message).join('\n'))
-    const keys = result.project.warnings.map((w) => w.key)
+    if (!result.ok) throw new Error(errorsOf(result).map((e) => e.message).join('\n'))
+    const keys = projectOf(result).warnings.map((w) => w.key)
     expect(keys).toEqual(expect.arrayContaining(['restart', 'healthcheck']))
   })
 
@@ -151,13 +161,13 @@ services:
       'compose.yaml': 'services:\n  app:\n    image: alpine\n    profiles: [dev]\n'
     })
     expect(profiles.ok).toBe(false)
-    if (!profiles.ok) expect(profiles.errors[0].key).toBe('profiles')
+    expect(errorsOf(profiles)[0].key).toBe('profiles')
 
     const networks = parse({
       'compose.yaml': 'services:\n  app:\n    image: alpine\n    networks: [backend]\n'
     })
     expect(networks.ok).toBe(false)
-    if (!networks.ok) expect(networks.errors[0].key).toBe('networks')
+    expect(errorsOf(networks)[0].key).toBe('networks')
   })
 
   it('rejects dependency cycles and unknown dependencies', () => {
@@ -169,13 +179,13 @@ services:
 `
     })
     expect(cycle.ok).toBe(false)
-    if (!cycle.ok) expect(cycle.errors[0].message).toMatch(/cycle/i)
+    expect(errorsOf(cycle)[0].message).toMatch(/cycle/i)
 
     const missing = parse({
       'compose.yaml': 'services:\n  a:\n    image: alpine\n    depends_on: [ghost]\n'
     })
     expect(missing.ok).toBe(false)
-    if (!missing.ok) expect(missing.errors[0].message).toMatch(/ghost/)
+    expect(errorsOf(missing)[0].message).toMatch(/ghost/)
   })
 
   it('reports YAML syntax errors with a line number', () => {
@@ -183,7 +193,7 @@ services:
       'compose.yaml': 'services:\n  app:\n    image: [unclosed\n'
     })
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.errors[0].line).toBeGreaterThan(0)
+    expect(errorsOf(result)[0].line).toBeGreaterThan(0)
   })
 
   it('rejects unsupported service keys with the service name', () => {
@@ -191,7 +201,7 @@ services:
       'compose.yaml': 'services:\n  app:\n    image: alpine\n    network_mode: host\n'
     })
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.errors[0]).toMatchObject({ service: 'app', key: 'network_mode' })
+    expect(errorsOf(result)[0]).toMatchObject({ service: 'app', key: 'network_mode' })
   })
 
   it('requires a host port and supports host IPs and udp', () => {
@@ -208,14 +218,14 @@ services:
       - "5353:53/udp"
 `
     })
-    if (!result.ok) throw new Error(result.errors.map((e) => e.message).join('\n'))
-    expect(result.project.services[0].ports[0]).toMatchObject({
+    if (!result.ok) throw new Error(errorsOf(result).map((e) => e.message).join('\n'))
+    expect(projectOf(result).services[0].ports[0]).toMatchObject({
       hostIp: '127.0.0.1',
       hostPort: 5432,
       containerPort: 5432,
       protocol: 'tcp'
     })
-    expect(result.project.services[0].ports[1]).toMatchObject({ protocol: 'udp' })
+    expect(projectOf(result).services[0].ports[1]).toMatchObject({ protocol: 'udp' })
   })
 
   it('parses build objects, command tokenization and names', () => {
@@ -235,8 +245,8 @@ services:
     user: "1000:1000"
 `
     })
-    if (!result.ok) throw new Error(result.errors.map((e) => e.message).join('\n'))
-    const app = result.project.services[0]
+    if (!result.ok) throw new Error(errorsOf(result).map((e) => e.message).join('\n'))
+    const app = projectOf(result).services[0]
     expect(app.build).toMatchObject({
       dockerfile: 'Dockerfile.dev',
       args: [{ key: 'VERSION', value: '1' }],
@@ -276,6 +286,6 @@ services:
     })
     const result = parseComposeFile(join(dir, 'compose.yaml'), { env: {} })
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.errors[0].message).toMatch(/shared/)
+    expect(errorsOf(result)[0].message).toMatch(/shared/)
   })
 })

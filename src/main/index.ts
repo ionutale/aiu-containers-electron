@@ -5,9 +5,12 @@ import icon from '../../resources/icon.png?asset'
 import { BuildManager } from './container-cli/build'
 import { getCliVersion, isVersionAtLeast } from './container-cli/cli'
 import { listContainers, startSystem, systemStatus } from './container-cli/commands'
+import { ComposeRunner, type ComposeRunnerEvents } from './compose/runner'
+import { parseComposeFile } from './compose/parse'
 import { findDockerfile } from './context'
 import { registerIpc } from './ipc'
 import { CHANNELS } from '../shared/api'
+import type { ComposeActionResult, ComposeParseResult } from '../shared/compose'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -52,6 +55,17 @@ app.whenReady().then(() => {
 
   createWindow()
   const buildManager = new BuildManager()
+  const composeRunner = new ComposeRunner(buildManager)
+  const composeEvents: ComposeRunnerEvents = {
+    onOutput: (event) => currentWindow()?.webContents.send(CHANNELS.composeOutput, event),
+    onDone: (event) => currentWindow()?.webContents.send(CHANNELS.composeDone, event),
+    onLog: (event) => currentWindow()?.webContents.send(CHANNELS.composeLog, event)
+  }
+
+  const composeFailure = (parsed: ComposeParseResult): ComposeActionResult => ({
+    ok: false,
+    message: 'errors' in parsed ? parsed.errors.map((error) => error.message).join('\n') : ''
+  })
 
   registerIpc(ipcMain, {
     listContainers: (runningOnly) => listContainers(runningOnly),
@@ -95,6 +109,41 @@ app.whenReady().then(() => {
         defaultPath
       })
       return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0]
+    },
+    composeInspect: async (file) => parseComposeFile(file),
+    composeUp: async (req) => {
+      const parsed = parseComposeFile(req.file, { projectName: req.projectName })
+      if ('errors' in parsed) {
+        return {
+          ok: false,
+          error: { message: parsed.errors.map((error) => error.message).join('\n') }
+        }
+      }
+      return composeRunner.startUp(
+        parsed.project,
+        { forceBuild: req.forceBuild },
+        composeEvents
+      )
+    },
+    composeCancel: async (runId) => ({ ok: composeRunner.cancel(runId) }),
+    composeStop: async (req) => {
+      const parsed = parseComposeFile(req.file, { projectName: req.projectName })
+      if (!parsed.ok) return composeFailure(parsed)
+      return composeRunner.stop(parsed.project)
+    },
+    composeDown: async (req) => {
+      const parsed = parseComposeFile(req.file, { projectName: req.projectName })
+      if (!parsed.ok) return composeFailure(parsed)
+      return composeRunner.down(parsed.project, { removeVolumes: req.removeVolumes })
+    },
+    composeLogs: async (req) => {
+      const parsed = parseComposeFile(req.file, { projectName: req.projectName })
+      if (!parsed.ok) return composeFailure(parsed)
+      return composeRunner.logs(parsed.project, req.service, composeEvents)
+    },
+    composeLogsStop: async () => {
+      composeRunner.stopLogs()
+      return { ok: true }
     }
   })
 

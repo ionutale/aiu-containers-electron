@@ -35,6 +35,13 @@ function deps(over: Partial<IpcDeps> = {}): IpcDeps {
     findDockerfile: vi.fn().mockReturnValue({ dockerfile: 'Dockerfile' }),
     pickDirectory: vi.fn().mockResolvedValue('/picked'),
     pickFile: vi.fn().mockResolvedValue(null),
+    composeInspect: vi.fn().mockResolvedValue({ ok: false, errors: [{ message: 'no project' }] }),
+    composeUp: vi.fn().mockResolvedValue({ ok: true, runId: 'c1' }),
+    composeCancel: vi.fn().mockResolvedValue({ ok: true }),
+    composeStop: vi.fn().mockResolvedValue({ ok: true }),
+    composeDown: vi.fn().mockResolvedValue({ ok: true }),
+    composeLogs: vi.fn().mockResolvedValue({ ok: true }),
+    composeLogsStop: vi.fn().mockResolvedValue({ ok: true }),
     ...over
   }
 }
@@ -52,7 +59,14 @@ describe('registerIpc', () => {
         CHANNELS.pickDirectory,
         CHANNELS.pickFile,
         CHANNELS.systemStart,
-        CHANNELS.systemStatus
+        CHANNELS.systemStatus,
+        CHANNELS.composeInspect,
+        CHANNELS.composeUp,
+        CHANNELS.composeCancel,
+        CHANNELS.composeStop,
+        CHANNELS.composeDown,
+        CHANNELS.composeLogs,
+        CHANNELS.composeLogsStop
       ].sort()
     )
   })
@@ -75,5 +89,22 @@ describe('registerIpc', () => {
     expect(d.buildCancel).toHaveBeenCalledWith('abc')
     await main.handlers.get(CHANNELS.contextInspect)!(null, { dir: '/ctx' })
     expect(d.findDockerfile).toHaveBeenCalledWith('/ctx')
+    await main.handlers.get(CHANNELS.composeInspect)!(null, { file: '/p/compose.yaml' })
+    expect(d.composeInspect).toHaveBeenCalledWith('/p/compose.yaml')
+    await main.handlers.get(CHANNELS.composeUp)!(null, {
+      file: '/p/compose.yaml',
+      forceBuild: true
+    })
+    expect(d.composeUp).toHaveBeenCalledWith({ file: '/p/compose.yaml', forceBuild: true })
+    await main.handlers.get(CHANNELS.composeDown)!(null, {
+      file: '/p/compose.yaml',
+      removeVolumes: true
+    })
+    expect(d.composeDown).toHaveBeenCalledWith({
+      file: '/p/compose.yaml',
+      removeVolumes: true
+    })
+    await main.handlers.get(CHANNELS.composeLogs)!(null, { file: '/p/compose.yaml', service: 'web' })
+    expect(d.composeLogs).toHaveBeenCalledWith({ file: '/p/compose.yaml', service: 'web' })
   })
 })
