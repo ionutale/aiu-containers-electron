@@ -1,8 +1,9 @@
 <script lang="ts">
   import Containers from './screens/Containers.svelte'
+  import Compose from './screens/Compose.svelte'
   import Build from './screens/Build.svelte'
 
-  let view = $state<'containers' | 'build'>('containers')
+  let view = $state<'containers' | 'compose' | 'build'>('containers')
 </script>
 
 <div class="app">
@@ -73,6 +74,30 @@
 
     <button
       class="nav-item"
+      class:active={view === 'compose'}
+      aria-current={view === 'compose' ? 'page' : undefined}
+      aria-label="Compose"
+      onclick={() => (view = 'compose')}
+    >
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path
+          d="M8 1.8 14 5 8 8.2 2 5 8 1.8Z"
+          stroke="currentColor"
+          stroke-width="1.3"
+          stroke-linejoin="round"
+        />
+        <path
+          d="m2 8 6 3.2L14 8M2 11l6 3.2L14 11"
+          stroke="currentColor"
+          stroke-width="1.3"
+          stroke-linejoin="round"
+        />
+      </svg>
+      <span>Compose</span>
+    </button>
+
+    <button
+      class="nav-item"
       class:active={view === 'build'}
       aria-current={view === 'build' ? 'page' : undefined}
       aria-label="Build"
@@ -100,6 +125,8 @@
     <div class="shell">
       {#if view === 'containers'}
         <Containers />
+      {:else if view === 'compose'}
+        <Compose />
       {:else}
         <Build />
       {/if}
