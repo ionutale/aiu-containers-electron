@@ -96,7 +96,7 @@ The repo already contains `.git/` and `docs/`; the scaffolder wants an empty dir
 tmp=$(mktemp -d)
 cd "$tmp"
 yes '' | pnpm dlx @quick-start/create-electron@latest scaffold-app --template svelte-ts
-cd /Users/ionutale/developer-playground/aiu-containers-electron
+cd /path/to/aiu-containers-electron
 cp -R "$tmp/scaffold-app/." .
 rm -rf "$tmp"
 ls

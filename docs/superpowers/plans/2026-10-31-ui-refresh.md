@@ -107,7 +107,7 @@
 
 ### Task 8: Publish
 
-- [ ] Step 1: Scan for secrets/home paths: `grep -rIl "/Users/ionutale" --exclude-dir=node_modules --exclude-dir=.git .` (expect only acceptable fixtures/README if any), plus a token pattern scan.
+- [ ] Step 1: Scan the tracked tree for machine-specific home paths and token patterns before publishing.
 - [ ] Step 2: `gh repo create ionutale/aiu-containers-electron --public --source=. --push --description "macOS app for Apple's container runtime: list containers and build images from a Dockerfile"`.
 - [ ] Step 3: Add topics (`gh repo edit --add-topic macos --add-topic electron --add-topic svelte --add-topic apple-container`).
 - [ ] Step 4: Confirm the CI run started (`gh run list --limit 1`), report status and URL.
