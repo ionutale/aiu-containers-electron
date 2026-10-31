@@ -118,8 +118,8 @@ Focus-visible ring uses `--ring`; all interactive elements get hover/active/disa
   containers, a completed build log), waits for stable content, captures at 2× device pixel ratio:
   `containers-light.png`, `containers-dark.png`, `build-light.png`, `build-dark.png`,
   `build-log-light.png` (successful run).
-- Theme forcing: main process sets `nativeTheme.themeSource` from a documented `AIU_THEME`
-  environment variable (`light|dark`), used by the script; default remains `system`.
+- Theme forcing: Playwright's `page.emulateMedia({ colorScheme })` sets the renderer's colour scheme
+  per capture (nativeTheme alone does not move Chromium's media query reliably here).
 - Images live in `docs/screenshots/` and are referenced by the README via relative paths.
 
 ### README
