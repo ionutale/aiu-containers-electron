@@ -57,7 +57,7 @@ export class ComposeRunner {
     }
     const runId = randomUUID()
     const active: ActiveRun = { runId, action: 'up', canceled: false }
-    this.active = { ...active }
+    this.active = active
     void this.up(project, options, events, active).finally(() => {
       if (this.active?.runId === runId) this.active = null
     })
@@ -109,13 +109,33 @@ export class ComposeRunner {
         return { ok: false, message: failureMessage(deleted, 'delete containers') }
       }
     }
-    await runCli(['network', 'delete', project.network], { env: this.env, timeoutMs: 30_000 })
-    if (options.removeVolumes) {
-      for (const volume of project.namedVolumes) {
-        await runCli(['volume', 'delete', volume], { env: this.env, timeoutMs: 30_000 })
+    const failures: string[] = []
+    const networks = await this.listNames(['network', 'list', '--format', 'json'])
+    if (networks.includes(project.network)) {
+      const network = await runCli(['network', 'delete', project.network], {
+        env: this.env,
+        timeoutMs: 30_000
+      })
+      if (network.spawnError || network.timedOut || network.code !== 0) {
+        failures.push(failureMessage(network, `network ${project.network}`))
       }
     }
-    return { ok: true }
+    if (options.removeVolumes && project.namedVolumes.length > 0) {
+      const volumes = await this.listNames(['volume', 'list', '--format', 'json'])
+      for (const volume of project.namedVolumes) {
+        if (!volumes.includes(volume)) continue
+        const result = await runCli(['volume', 'delete', volume], {
+          env: this.env,
+          timeoutMs: 30_000
+        })
+        if (result.spawnError || result.timedOut || result.code !== 0) {
+          failures.push(failureMessage(result, `volume ${volume}`))
+        }
+      }
+    }
+    return failures.length > 0
+      ? { ok: false, message: `Containers removed, but cleanup failed: ${failures.join('; ')}` }
+      : { ok: true }
   }
 
   async logs(
@@ -291,7 +311,7 @@ export class ComposeRunner {
         `Container ${service.containerName} already exists and belongs to project ${owner}.`
       )
     }
-    if (!owner && !existing.id.startsWith(`${project.name}-`)) {
+    if (!owner) {
       throw new Error(
         `Container ${service.containerName} already exists outside this project; remove it first.`
       )
@@ -343,10 +363,7 @@ export class ComposeRunner {
     return {
       ok: true,
       containers: result.containers.filter(
-        (container) =>
-          container.labels['com.aiu.compose.project'] === project.name ||
-          (container.labels['com.aiu.compose.project'] === undefined &&
-            container.id.startsWith(`${project.name}-`))
+        (container) => container.labels['com.aiu.compose.project'] === project.name
       )
     }
   }

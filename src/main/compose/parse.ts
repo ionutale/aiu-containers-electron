@@ -528,7 +528,7 @@ function parseService(
   value: unknown,
   project: string,
   dir: string,
-  env: Record<string, string | undefined>,
+  shellEnv: Record<string, string | undefined>,
   namedVolumes: Set<string>,
   errors: ComposeError[],
   warnings: ComposeWarning[]
@@ -536,6 +536,12 @@ function parseService(
   if (!isRecord(value)) {
     errors.push({ message: `Service ${name} must be an object.`, service: name })
     return null
+  }
+  if (!/^[a-z0-9][a-z0-9._-]*$/.test(name)) {
+    errors.push({
+      message: `Service name "${name}" must be lowercase letters, digits, dots, dashes or underscores.`,
+      service: name
+    })
   }
   for (const key of Object.keys(value)) {
     if (key.startsWith('x-')) continue
@@ -562,7 +568,7 @@ function parseService(
   const build =
     value.build === undefined
       ? undefined
-      : parseBuild(value.build, dir, project, name, env, errors, warnings)
+      : parseBuild(value.build, dir, project, name, shellEnv, errors, warnings)
   if (!image && !build) {
     errors.push({ message: `Service ${name} needs an image or a build section.`, service: name })
     return null
@@ -582,7 +588,7 @@ function parseService(
 
   const fileEnv = readEnvFiles(value.env_file, dir, name, errors)
   const envMap = new Map<string, string>(Object.entries(fileEnv))
-  for (const item of serviceEnvironment(value.environment, env, errors, name)) {
+  for (const item of serviceEnvironment(value.environment, shellEnv, errors, name)) {
     envMap.set(item.key, item.value)
   }
 
@@ -758,7 +764,8 @@ export function parseComposeFile(file: string, opts: ComposeParseOptions = {}): 
 
   const dir = dirname(file)
   const dotenv = readDotenv(join(dir, '.env'))
-  const env: Record<string, string | undefined> = { ...dotenv, ...(opts.env ?? process.env) }
+  const shellEnv = opts.env ?? process.env
+  const env: Record<string, string | undefined> = { ...dotenv, ...shellEnv }
   const interpolated = interpolateValue(doc.toJS(), env, errors, '$')
   if (errors.length > 0) return { ok: false, errors }
   if (!isRecord(interpolated)) {

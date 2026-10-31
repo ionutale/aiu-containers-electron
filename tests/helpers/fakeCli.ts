@@ -3,7 +3,13 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export type FakeMode =
-  'default' | 'service-down' | 'bad-json' | 'slow-build' | 'blocking-build' | 'failing-build'
+  | 'default'
+  | 'service-down'
+  | 'bad-json'
+  | 'slow-build'
+  | 'blocking-build'
+  | 'failing-build'
+  | 'teardown-fail'
 
 const FAKE_SOURCE = fileURLToPath(new URL('../fake-container/container', import.meta.url))
 

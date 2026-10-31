@@ -43,8 +43,8 @@ future runtime ships it, the runner adds `alias=<service>` to the network attach
 
 ## Supported subset
 
-Top level: `name`, `services`, `version` (ignored). Anything else is an error, except `x-*`
-extension keys (ignored).
+Top level: `name`, `services`, `version` (ignored), and `volumes:` declarations (driver/external
+options ignored with a warning). Anything else is an error, except `x-*` extension keys (ignored).
 
 Service keys:
 

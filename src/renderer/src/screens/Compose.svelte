@@ -62,10 +62,7 @@
       const result = await getApi().list(false)
       if ('error' in result) return
       containers = result.containers.filter(
-        (container) =>
-          container.labels['com.aiu.compose.project'] === project?.name ||
-          (container.labels['com.aiu.compose.project'] === undefined &&
-            container.id.startsWith(`${project?.name}-`))
+        (container) => container.labels['com.aiu.compose.project'] === project?.name
       )
     } catch {
       // Status is a convenience; the CLI errors surface on actions.
@@ -112,6 +109,19 @@
     if (logsService) await stopLogs()
     busy = 'up'
     try {
+      const inspected = await getApi().composeInspect(project.file)
+      if ('errors' in inspected) {
+        errors = inspected.errors
+        busy = null
+        return
+      }
+      if (inspected.project.name !== project.name) {
+        actionError = `The project name changed from ${project.name} to ${inspected.project.name}. Down the current stack before starting the new one.`
+        busy = null
+        return
+      }
+      project = inspected.project
+      errors = []
       const started = await getApi().composeUp({
         file: project.file,
         projectName: project.name,
@@ -262,7 +272,7 @@
       <p>Run a compose file on Apple's container runtime.</p>
     </div>
     <div class="actions">
-      <button class="btn" onclick={openFile}>Open…</button>
+      <button class="btn" onclick={openFile} disabled={busy !== null}>Open…</button>
       {#if project}
         <label class="switch">
           <input type="checkbox" bind:checked={forceBuild} />
@@ -286,8 +296,13 @@
       <div>
         <strong>This file cannot be used yet.</strong>
         <ul class="warn-list">
-          {#each errors as error (error.message)}
-            <li>{error.message}</li>
+          {#each errors as error, index (index)}
+            <li>
+              {#if error.service}<strong>{error.service}</strong>:
+              {/if}{error.message}{#if error.line}<span class="muted">
+                  (line {error.line})</span
+                >{/if}
+            </li>
           {/each}
         </ul>
       </div>
@@ -321,7 +336,11 @@
           <div class="recent">
             <span class="muted">Recent</span>
             {#each recent as item (item)}
-              <button class="recent-item mono" onclick={() => inspect(item)}>{item}</button>
+              <button
+                class="recent-item mono"
+                onclick={() => inspect(item)}
+                disabled={busy !== null}>{item}</button
+              >
             {/each}
           </div>
         {/if}

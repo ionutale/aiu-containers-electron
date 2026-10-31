@@ -102,6 +102,27 @@ describe('Compose screen', () => {
     expect(screen.queryByRole('button', { name: 'Up' })).not.toBeInTheDocument()
   })
 
+  it('renders duplicate error messages with per-service context', async () => {
+    stubApi({
+      composeInspect: vi.fn().mockResolvedValue({
+        ok: false,
+        errors: [
+          { message: 'Unsupported service key: networks', service: 'web', key: 'networks' },
+          { message: 'Unsupported service key: networks', service: 'db', key: 'networks' }
+        ]
+      })
+    })
+    render(Compose)
+    await fireEvent.click(screen.getByRole('button', { name: 'Open…' }))
+
+    await waitFor(() =>
+      expect(screen.getAllByText(/Unsupported service key: networks/)).toHaveLength(2)
+    )
+    const items = screen.getAllByRole('listitem').map((item) => item.textContent)
+    expect(items.some((text) => text?.includes('web'))).toBe(true)
+    expect(items.some((text) => text?.includes('db'))).toBe(true)
+  })
+
   it('streams Up output and reports success', async () => {
     let output: ((event: unknown) => void) | null = null
     let done: ((event: unknown) => void) | null = null

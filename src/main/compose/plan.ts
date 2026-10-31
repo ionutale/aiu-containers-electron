@@ -74,7 +74,7 @@ export function runArgv(
 }
 
 export function hasAliasSupport(helpText: string): boolean {
-  return /--network[^\n]*alias=|alias=/.test(helpText)
+  return helpText.split('\n').some((line) => line.includes('--network') && line.includes('alias='))
 }
 
 /** Probe once per call site; the CLI's help is the only capability signal. */

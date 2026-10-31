@@ -116,7 +116,7 @@
 
   <div class="card">
     {#if containers.length > 0}
-      <div class="table-wrap">
+      <div class="table-wrap containers-table">
         <table>
           <thead>
             <tr><th>ID</th><th>Image</th><th>State</th><th>Address</th><th>Platform</th></tr>

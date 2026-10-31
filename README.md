@@ -70,17 +70,31 @@ Apple's `container` CLI has no Compose command, so the app implements a delibera
 on the stock runtime. Open a compose file from the **Compose** tab; there is no plugin or extra
 service to install.
 
+Example:
+
+```yaml
+name: hello
+services:
+  web:
+    image: nginx:latest
+    ports:
+      - '8080:80'
+  cache:
+    image: redis:7
+```
+
 Supported:
 
 | Area          | Keys                                                                                                                                                                                                                                                                  |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Project       | `name`, `services` (`version` ignored)                                                                                                                                                                                                                                |
 | Service       | `image`, `build` (`context`, `dockerfile`, `args`, `target`, `platform`), `environment`, `env_file`, `ports` (host IP optional, `/udp`), `volumes` (bind or named, `:ro`), `depends_on`, `command`, `entrypoint`, `working_dir`, `user`, `platform`, `container_name` |
-| Interpolation | `$VAR`, `${VAR}`, `${VAR:-default}`, `${VAR-default}`, `${VAR:?message}`, `$$`; shell values beat the project's `.env`                                                                                                                                                |
+| Interpolation | `$VAR`, `${VAR}`, `${VAR:-default}`, `${VAR-default}`, `${VAR:?message}`, `${VAR?message}`, `$$`; shell values beat the project's `.env`                                                                                                                              |
 
 `profiles`, custom `networks`, `secrets`, `configs`, `extends`, `volumes_from`, `network_mode`,
-`pid` and `ipc` are rejected with the file/service/key. `restart`, `healthcheck`, `deploy`, resource
-limits and similar runtime-only settings are listed as ignored before anything starts.
+`pid` and `ipc` are rejected with the file/service/key. Top-level `volumes:` declarations are
+accepted (driver/external options are ignored with a warning). `restart`, `healthcheck`, `deploy`,
+resource limits and similar runtime-only settings are listed as ignored before anything starts.
 
 > [!IMPORTANT]
 > **Apple's runtime cannot resolve service names.** Containers on a custom network reach each other

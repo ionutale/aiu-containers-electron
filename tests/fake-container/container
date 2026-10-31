@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Stateful fake of Apple's `container` CLI (v0.10.0 shapes) for tests.
 // Modes via FAKE_CONTAINER_MODE: default | service-down | bad-json |
-// slow-build | blocking-build | failing-build
+// slow-build | blocking-build | failing-build | teardown-fail
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -458,6 +458,10 @@ async function main() {
     }
     if (action === 'delete' || action === 'rm') {
       const parsed = parseArgs(rest.slice(1))
+      if (MODE === 'teardown-fail') {
+        process.stderr.write(`network ${parsed.positionals.join(', ')} is in use\n`)
+        process.exit(1)
+      }
       const current = state()
       current.networks = networkNames().filter((name) => !parsed.positionals.includes(name))
       save(current)
@@ -503,6 +507,10 @@ async function main() {
     }
     if (action === 'delete' || action === 'rm') {
       const parsed = parseArgs(rest.slice(1))
+      if (MODE === 'teardown-fail') {
+        process.stderr.write(`volume ${parsed.positionals.join(', ')} is in use\n`)
+        process.exit(1)
+      }
       const current = state()
       current.volumes = volumeNames().filter((name) => !parsed.positionals.includes(name))
       save(current)

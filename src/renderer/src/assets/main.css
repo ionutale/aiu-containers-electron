@@ -805,14 +805,6 @@ select:focus {
   color: var(--accent);
 }
 
-.log-service {
-  display: inline-block;
-  min-width: 44px;
-  margin-right: 8px;
-  color: var(--accent);
-  font-weight: 600;
-}
-
 .small {
   font-size: 11px;
 }
@@ -856,8 +848,8 @@ select:focus {
     grid-column: 1;
   }
 
-  thead th:nth-child(5),
-  tbody td:nth-child(5) {
+  .containers-table thead th:nth-child(5),
+  .containers-table tbody td:nth-child(5) {
     display: none;
   }
 }

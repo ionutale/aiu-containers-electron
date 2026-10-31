@@ -197,6 +197,22 @@ services:
     expect(saved.extra.map((c) => c.configuration.id)).toContain('demo-web')
   })
 
+  it('does not adopt an unlabelled container with a colliding name', async () => {
+    const ctx = setup(TWO_SERVICES)
+    const foreign = await runCli(['run', '-d', '--name', 'demo-web', 'alpine:3.20'], {
+      env: ctx.fake.env
+    })
+    expect(foreign.code).toBe(0)
+
+    ctx.runner.startUp(ctx.project, {}, ctx.events)
+    const done = await ctx.done
+    expect(done.ok).toBe(false)
+    expect(done.message).toMatch(/outside this project/i)
+    expect(
+      state(ctx.fake.statePath).extra.map((container) => container.configuration.id)
+    ).toContain('demo-web')
+  })
+
   it('streams logs for a service and stops following', async () => {
     const ctx = setup(TWO_SERVICES)
     ctx.runner.startUp(ctx.project, {}, ctx.events)
@@ -207,6 +223,21 @@ services:
     await new Promise((resolve) => setTimeout(resolve, 300))
     expect(ctx.logs.some((line) => line.line.includes('[demo-web] listening'))).toBe(true)
     ctx.runner.stopLogs()
+  })
+
+  it('reports teardown failures instead of claiming success', async () => {
+    const ctx = setup(TWO_SERVICES, 'teardown-fail')
+    await runUp(ctx)
+
+    const result = await ctx.runner.down(ctx.project, { removeVolumes: true })
+    expect(result.ok).toBe(false)
+    if ('message' in result) {
+      expect(result.message).toMatch(/network demo_default/)
+      expect(result.message).toMatch(/volume demo_data/)
+    }
+    const saved = state(ctx.fake.statePath)
+    expect(saved.networks).toContain('demo_default')
+    expect(saved.volumes).toContain('demo_data')
   })
 
   it('reports a failed build and the service that failed', async () => {
@@ -226,6 +257,28 @@ services:
     expect(ctx.outputs.some((line) => line.line.includes('did not complete successfully'))).toBe(
       true
     )
+  })
+
+  it('cancels a blocking build without creating a container', async () => {
+    const ctx = setup(
+      `
+name: demo
+services:
+  app:
+    build: .
+`,
+      'blocking-build'
+    )
+    const started = ctx.runner.startUp(ctx.project, {}, ctx.events)
+    if (started.ok === false) throw new Error(started.error.message)
+
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(ctx.runner.cancel(started.runId)).toBe(true)
+    const done = await ctx.done
+
+    expect(done.ok).toBe(false)
+    expect(done.message).toMatch(/Canceled/)
+    expect(state(ctx.fake.statePath).extra).toEqual([])
   })
 
   it('rejects a second concurrent operation', async () => {

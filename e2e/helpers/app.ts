@@ -15,7 +15,13 @@ const MAIN = join(__dirname, '..', '..', 'out', 'main', 'index.js')
 const FAKE_SOURCE = join(__dirname, '..', '..', 'tests', 'fake-container', 'container')
 
 export type FakeMode =
-  'default' | 'service-down' | 'bad-json' | 'slow-build' | 'blocking-build' | 'failing-build'
+  | 'default'
+  | 'service-down'
+  | 'bad-json'
+  | 'slow-build'
+  | 'blocking-build'
+  | 'failing-build'
+  | 'teardown-fail'
 
 export interface FakeCli {
   binDir: string
